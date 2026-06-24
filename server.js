@@ -27,13 +27,19 @@ try {
   console.error('Could not read data.json, starting fresh:', e.message);
 }
 
+const TEMP_FILE = DATA_FILE + '.tmp';
 let saveTimer = null;
 function saveDB() {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    fs.writeFile(DATA_FILE, JSON.stringify(db), (err) => {
-      if (err) console.error('Save failed:', err.message);
+    const payload = JSON.stringify(db);
+    // Write to temp file then atomically rename — prevents corrupt data.json on crash
+    fs.writeFile(TEMP_FILE, payload, (err) => {
+      if (err) { console.error('Save (write) failed:', err.message); return; }
+      fs.rename(TEMP_FILE, DATA_FILE, (err2) => {
+        if (err2) console.error('Save (rename) failed:', err2.message);
+      });
     });
   }, 500);
 }
@@ -62,10 +68,11 @@ const findPlayerByToken = (tok) =>
   tok ? Object.values(db.players).find((p) => p.token === tok) || null : null;
 
 function guildTreasure(g) {
-  return g.members.reduce((sum, m) => {
+  const memberSum = g.members.reduce((sum, m) => {
     const p = db.players[m.toLowerCase()];
     return sum + (p ? p.lifetime || 0 : 0);
   }, 0);
+  return memberSum + (g.bonusTreasure || 0);
 }
 
 function guildView(key) {
@@ -277,6 +284,25 @@ async function handleApi(req, res) {
     saveDB();
     return sendJSON(res, 200, { ok: true });
   }
+  if (url === '/api/guild/donate' && method === 'POST') {
+    const me = findPlayerByToken(body.token);
+    if (!me) return sendJSON(res, 401, { error: 'Bad token.' });
+    if (!me.guild) return sendJSON(res, 400, { error: 'You are not in a guild.' });
+    const amount = Math.max(0, Math.floor(Number(body.amount) || 0));
+    if (amount < 1) return sendJSON(res, 400, { error: 'Amount must be at least $1.' });
+    // Donation is purely symbolic server-side (treasure is sum of member lifetime)
+    // We record it as bonus treasure on the guild itself
+    const key = me.guild.toLowerCase();
+    const g   = db.guilds[key];
+    if (!g) return sendJSON(res, 404, { error: 'Guild not found.' });
+    g.bonusTreasure = (g.bonusTreasure || 0) + amount;
+    const treasure = guildTreasure(g);
+    saveDB();
+    // Broadcast treasury update to guild members
+    wsBroadcastToGuild(me.guild, { type: 'guild_update', treasure });
+    return sendJSON(res, 200, { ok: true, treasure });
+  }
+
   if (url === '/api/guilds' && method === 'GET') {
     const guilds = Object.keys(db.guilds).map((k) => {
       const g = db.guilds[k];

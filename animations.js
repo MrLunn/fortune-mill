@@ -328,11 +328,48 @@ const Anim = (() => {
     }
   }
 
+  // ── Slot machine reels ────────────────────────────────────────────────────
+  let _slotSpinning = false;
+  const REEL_SYMS = ['🍒','🍋','🍇','⭐','🎯','💰','💎'];
+
+  function isSlotSpinning() { return _slotSpinning; }
+
+  function spinReels(results, callback) {
+    if (_slotSpinning) return;
+    _slotSpinning = true;
+
+    const ids   = ['reel0','reel1','reel2'];
+    const stops = [700, 1050, 1400];
+    let done    = 0;
+
+    ids.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (!el) { done++; if (done===3){ _slotSpinning=false; callback&&callback(); } return; }
+
+      let tick = 0;
+      const iv = setInterval(() => {
+        el.textContent = REEL_SYMS[tick % REEL_SYMS.length];
+        tick++;
+      }, 55);
+
+      setTimeout(() => {
+        clearInterval(iv);
+        el.textContent = results[i];
+        // Flash the winning symbol
+        el.style.transition = 'transform 0.15s';
+        el.style.transform  = 'scale(1.25)';
+        setTimeout(() => { el.style.transform = 'scale(1)'; }, 150);
+        done++;
+        if (done === 3) { _slotSpinning = false; callback && callback(); }
+      }, stops[i]);
+    });
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
   function init() {
     injectCSS();
     initFloater();
   }
 
-  return { init, initDartboard, initScratchCard, throwDart: launchDart, revealScratch, float, floatFromEl };
+  return { init, initDartboard, initScratchCard, throwDart: launchDart, revealScratch, float, floatFromEl, spinReels, isSlotSpinning };
 })();

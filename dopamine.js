@@ -15,29 +15,31 @@ const Dopamine = (() => {
 
   // ── Achievements ──────────────────────────────────────────────────────────
   const ACH = [
-    { id:'dart1',    i:'🎯', n:'First Throw',    d:'Throw your first dart',               c:(s)=>s.lifetime>0 },
-    { id:'crit1',    i:'💥', n:'Bullseye!',       d:'Land your first critical throw',      c:(s)=>(s.crits||0)>=1 },
-    { id:'crit50',   i:'🔥', n:'On Fire',         d:'Land 50 critical throws',             c:(s)=>(s.crits||0)>=50 },
-    { id:'win1',     i:'🎟', n:'Lucky Draw',      d:'Win a scratch ticket',                c:(s)=>(s.scratchWins||0)>=1 },
-    { id:'jackpot1', i:'💰', n:'Jackpot!',        d:'Hit a scratch jackpot',               c:(s)=>(s.jackpots||0)>=1 },
-    { id:'jackpot5', i:'🤑', n:'Money Machine',   d:'Hit 5 scratch jackpots',              c:(s)=>(s.jackpots||0)>=5 },
-    { id:'g1k',      i:'💵', n:'Grand',           d:'Earn $1,000 lifetime',                c:(s)=>s.lifetime>=1e3 },
-    { id:'g100k',    i:'💶', n:'High Roller',     d:'Earn $100,000 lifetime',              c:(s)=>s.lifetime>=1e5 },
-    { id:'g1m',      i:'💷', n:'Millionaire',     d:'Earn $1,000,000 lifetime',            c:(s)=>s.lifetime>=1e6 },
-    { id:'g1b',      i:'🏦', n:'Billionaire',     d:'Earn $1,000,000,000 lifetime',        c:(s)=>s.lifetime>=1e9 },
-    { id:'g1t',      i:'🌐', n:'World Economy',   d:'Earn $1T lifetime',                   c:(s)=>s.lifetime>=1e12 },
-    { id:'combo5',   i:'⚡', n:'Combo ×5',        d:'Build a 5x throw combo',              c:(s)=>(s.maxCombo||0)>=5 },
-    { id:'combo10',  i:'🌪', n:'Combo ×10',       d:'Build a 10x throw combo',             c:(s)=>(s.maxCombo||0)>=10 },
-    { id:'combo20',  i:'🌀', n:'Combo ×20',       d:'Build a 20x throw combo',             c:(s)=>(s.maxCombo||0)>=20 },
-    { id:'pres1',    i:'✨', n:'Reborn',          d:'Prestige for the first time',         c:(_,a)=>(a.prestige||0)>=1 },
-    { id:'pres5',    i:'🌟', n:'Phoenix',         d:'Prestige 5 times',                    c:(_,a)=>(a.prestige||0)>=5 },
-    { id:'lvl5',     i:'⬆️', n:'Rising Star',     d:'Reach level 5',                       c:(s)=>(s.level||1)>=5 },
-    { id:'lvl10',    i:'🎖', n:'Veteran',         d:'Reach level 10',                      c:(s)=>(s.level||1)>=10 },
-    { id:'lvl25',    i:'👑', n:'Legend',          d:'Reach level 25',                      c:(s)=>(s.level||1)>=25 },
-    { id:'lucky1',   i:'🍀', n:'Lucky Break',     d:'Experience a Lucky Hour',             c:(s)=>(s.luckyHours||0)>=1 },
-    { id:'spin1',    i:'🎡', n:'Spin Doctor',     d:'Spin the fortune wheel',              c:(s)=>(s.spins||0)>=1 },
-    { id:'streak7',  i:'🗓', n:'Devoted',         d:'7-day login streak',                  c:(_,a)=>(a.dailyStreak||0)>=7 },
-    { id:'rooms',    i:'🏆', n:'Full House',      d:'Clear both rooms',                    c:(s)=>!!(s.darts&&s.darts.cleared&&s.scratch&&s.scratch.cleared) },
+    { id:'dart1',    i:'🎯', n:'First Throw',    d:'Throw your first dart',              bonus:'+0.5% earnings', bv:0.005, c:(s)=>s.lifetime>0 },
+    { id:'crit1',    i:'💥', n:'Bullseye!',       d:'Land your first critical throw',     bonus:'+0.5% earnings', bv:0.005, c:(s)=>(s.crits||0)>=1 },
+    { id:'crit50',   i:'🔥', n:'On Fire',         d:'Land 50 critical throws',            bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.crits||0)>=50 },
+    { id:'win1',     i:'🎟', n:'Lucky Draw',      d:'Win a scratch ticket',               bonus:'+0.5% earnings', bv:0.005, c:(s)=>(s.scratchWins||0)>=1 },
+    { id:'jackpot1', i:'💰', n:'Jackpot!',        d:'Hit a scratch jackpot',              bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.jackpots||0)>=1 },
+    { id:'jackpot5', i:'🤑', n:'Money Machine',   d:'Hit 5 scratch jackpots',             bonus:'+2% earnings',   bv:0.02,  c:(s)=>(s.jackpots||0)>=5 },
+    { id:'slot1',    i:'🎰', n:'Slot Rookie',     d:'Win your first slot spin',           bonus:'+0.5% earnings', bv:0.005, c:(s)=>(s.slotWins||0)>=1 },
+    { id:'slot20',   i:'🎲', n:'Slot Veteran',    d:'Win 20 slot spins',                  bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.slotWins||0)>=20 },
+    { id:'g1k',      i:'💵', n:'Grand',           d:'Earn $1,000 lifetime',               bonus:'+0.5% earnings', bv:0.005, c:(s)=>s.lifetime>=1e3 },
+    { id:'g100k',    i:'💶', n:'High Roller',     d:'Earn $100,000 lifetime',             bonus:'+1% earnings',   bv:0.01,  c:(s)=>s.lifetime>=1e5 },
+    { id:'g1m',      i:'💷', n:'Millionaire',     d:'Earn $1,000,000 lifetime',           bonus:'+2% earnings',   bv:0.02,  c:(s)=>s.lifetime>=1e6 },
+    { id:'g1b',      i:'🏦', n:'Billionaire',     d:'Earn $1,000,000,000 lifetime',       bonus:'+3% earnings',   bv:0.03,  c:(s)=>s.lifetime>=1e9 },
+    { id:'g1t',      i:'🌐', n:'World Economy',   d:'Earn $1T lifetime',                  bonus:'+5% earnings',   bv:0.05,  c:(s)=>s.lifetime>=1e12 },
+    { id:'combo5',   i:'⚡', n:'Combo ×5',        d:'Build a 5x throw combo',             bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.maxCombo||0)>=5 },
+    { id:'combo10',  i:'🌪', n:'Combo ×10',       d:'Build a 10x throw combo',            bonus:'+2% earnings',   bv:0.02,  c:(s)=>(s.maxCombo||0)>=10 },
+    { id:'combo20',  i:'🌀', n:'Combo ×20',       d:'Build a 20x throw combo',            bonus:'+3% earnings',   bv:0.03,  c:(s)=>(s.maxCombo||0)>=20 },
+    { id:'pres1',    i:'✨', n:'Reborn',          d:'Prestige for the first time',        bonus:'+2% earnings',   bv:0.02,  c:(_,a)=>(a.prestige||0)>=1 },
+    { id:'pres5',    i:'🌟', n:'Phoenix',         d:'Prestige 5 times',                   bonus:'+5% earnings',   bv:0.05,  c:(_,a)=>(a.prestige||0)>=5 },
+    { id:'lvl5',     i:'⬆️', n:'Rising Star',     d:'Reach level 5',                      bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.level||1)>=5 },
+    { id:'lvl10',    i:'🎖', n:'Veteran',         d:'Reach level 10',                     bonus:'+2% earnings',   bv:0.02,  c:(s)=>(s.level||1)>=10 },
+    { id:'lvl25',    i:'👑', n:'Legend',          d:'Reach level 25',                     bonus:'+5% earnings',   bv:0.05,  c:(s)=>(s.level||1)>=25 },
+    { id:'lucky1',   i:'🍀', n:'Lucky Break',     d:'Experience a Lucky Hour',            bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.luckyHours||0)>=1 },
+    { id:'spin1',    i:'🎡', n:'Spin Doctor',     d:'Spin the fortune wheel',             bonus:'+1% earnings',   bv:0.01,  c:(s)=>(s.spins||0)>=1 },
+    { id:'streak7',  i:'🗓', n:'Devoted',         d:'7-day login streak',                 bonus:'+3% earnings',   bv:0.03,  c:(_,a)=>(a.dailyStreak||0)>=7 },
+    { id:'rooms',    i:'🏆', n:'Full House',      d:'Clear both Darts and Scratchers',    bonus:'+5% earnings',   bv:0.05,  c:(s)=>!!(s.darts?.cleared&&s.scratch?.cleared) },
   ];
 
   function checkAchievements() {
@@ -50,15 +52,22 @@ const Dopamine = (() => {
     }
   }
 
+  function getAchievementBonus() {
+    if (!_state || !_state.achievements) return 1;
+    const got = new Set(_state.achievements);
+    const total = ACH.filter(a => got.has(a.id)).reduce((sum, a) => sum + (a.bv || 0), 0);
+    return 1 + total;
+  }
+
   function _showAchievement(a) {
     const stack = document.getElementById('achStack');
     if (!stack) return;
     const el = document.createElement('div');
     el.className = 'ach-toast';
-    el.innerHTML = `<span class="ach-icon">${a.i}</span><div><div class="ach-name">${a.n}</div><div class="ach-desc">${a.d}</div></div>`;
+    el.innerHTML = `<span class="ach-icon">${a.i}</span><div><div class="ach-name">${a.n}</div>${a.bonus ? `<div class="ach-bonus">${a.bonus}</div>` : ''}<div class="ach-desc">${a.d}</div></div>`;
     stack.appendChild(el);
     requestAnimationFrame(() => el.classList.add('visible'));
-    setTimeout(() => { el.classList.remove('visible'); setTimeout(() => el.remove(), 500); }, 4200);
+    setTimeout(() => { el.classList.remove('visible'); setTimeout(() => el.remove(), 500); }, 4500);
     if (typeof Music !== 'undefined') Music.sfxAchievement();
   }
 
@@ -364,6 +373,7 @@ const Dopamine = (() => {
     getComboMult,
     isLucky,
     getLevelBonus,
+    getAchievementBonus,
     addXP,
     checkMilestones,
     shake,
@@ -371,5 +381,6 @@ const Dopamine = (() => {
     calcOffline,
     startLucky,
     refreshXP: _updateXPBar,
+    ACH_LIST: ACH,
   };
 })();
