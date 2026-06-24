@@ -149,6 +149,7 @@
     logTo('dartsLog', `🎯 ${crit ? 'CRIT! ' : ''}Hit for ${money(payout)} (${Math.round(accuracy * 100)}% accuracy)`, crit ? 'good' : '');
     Anim.throwDart(accuracy, crit);
     Anim.floatFromEl('+' + money(payout * prestigeMultiplier()), $('throwBtn'), crit ? '#ffd166' : '#6ee7a0');
+    Music.sfxDart(crit);
     refreshTop();
     checkClear('darts', 'dartsGoal', 'dartsGoalText');
   }
@@ -171,9 +172,11 @@
       logTo('scratchLog', `🎟 ${jackpot ? '💰 JACKPOT! ' : ''}${t.name} ticket won ${money(win)}`, jackpot ? 'good' : '');
       Anim.revealScratch(true, jackpot);
       Anim.floatFromEl('+' + money(win * prestigeMultiplier()), $('scratchBtn'), jackpot ? '#ffd166' : '#6ee7a0');
+      Music.sfxWin(jackpot);
     } else {
       logTo('scratchLog', `🎟 ${t.name} ticket — no win. (-${money(t.cost)})`, 'muted');
       Anim.revealScratch(false, false);
+      Music.sfxLoss();
     }
     refreshTop();
     checkClear('scratch', 'scratchGoal', 'scratchGoalText');
@@ -373,6 +376,7 @@
       $('prestigeCount').textContent = auth.prestige;
       $('prestigeMult').textContent = (prestigeMultiplier() * 100).toFixed(0) + '%';
       toast(`✨ Prestige #${auth.prestige}! Earnings multiplier is now ${(prestigeMultiplier() * 100).toFixed(0)}%.`);
+      Music.sfxPrestige();
     } catch (e) { toast(e.message); }
   }
 
@@ -402,6 +406,7 @@
       updateDailyBtn();
       $('dailyStreak').textContent = r.streak;
       toast(`🎁 Day ${r.streak} reward: ${money(r.reward * prestigeMultiplier())}! (streak ×${(1 + (r.streak - 1) * 0.2).toFixed(1)})`);
+      Music.sfxDaily();
     } catch (e) { toast(e.message); }
   }
 
@@ -560,6 +565,7 @@
     Anim.init();
     Anim.initDartboard('dartRoomPanel');
     Anim.initScratchCard('scratchRoomPanel');
+    Music.start();
     connectWS();
     setInterval(tick, 200);
     setInterval(saveGame, 5000);
@@ -607,6 +613,10 @@
     $('scratchBtn').addEventListener('click', scratchTicket);
     $('prestigeBtn').addEventListener('click', doPrestige);
     $('dailyBtn').addEventListener('click', claimDaily);
+    $('muteBtn').addEventListener('click', () => {
+      const muted = Music.toggleMute();
+      $('muteBtn').textContent = muted ? '🔇 Music' : '🔊 Music';
+    });
     $('refreshPlayers').addEventListener('click', loadOpponents);
     $('refreshGuilds').addEventListener('click', loadGuilds);
     $('refreshBoard').addEventListener('click', loadBoard);
