@@ -60,10 +60,10 @@
   button.act:disabled { opacity: 0.4; cursor: not-allowed; }
   button.big { width: 100%; padding: 14px; font-size: 15px; color: var(--gold); }
   button.big:hover { background: #1c2836; }
-  #throwBtn  { color: var(--accent); }
-  #throwBtn:hover  { color: var(--gold); }
-  #scratchBtn { color: var(--gold); }
-  #scratchBtn:hover { color: var(--accent); }
+  #throwBtn  { color: #6ee7a0 !important; text-shadow: 0 0 12px rgba(110,231,160,0.5); }
+  #throwBtn:hover  { color: #ffd166 !important; text-shadow: 0 0 12px rgba(255,209,102,0.5); }
+  #scratchBtn { color: #ffd166 !important; text-shadow: 0 0 12px rgba(255,209,102,0.4); }
+  #scratchBtn:hover { color: #6ee7a0 !important; text-shadow: 0 0 12px rgba(110,231,160,0.5); }
 
   .upgrade { display: flex; justify-content: space-between; align-items: center; gap: 8px;
              border-bottom: 1px dashed var(--border); padding: 6px 0; }
@@ -157,6 +157,7 @@
           <p class="muted">Throw darts for gold. Time it well — the closer to center, the bigger the payout.</p>
           <div class="progress"><div id="dartsGoal"></div></div>
           <p class="muted" id="dartsGoalText"></p>
+          <div id="dartboardSlot" style="text-align:center;"></div>
           <button class="big" id="throwBtn">THROW DART (space)</button>
           <div class="stat"><span class="k">Gold per throw</span><span class="v gold" id="dartValue">$1</span></div>
           <div class="stat"><span class="k">Auto-throwers</span><span class="v" id="dartAuto">0</span></div>

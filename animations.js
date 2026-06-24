@@ -171,23 +171,19 @@ const Anim = (() => {
   }
 
   function initDartboard(containerId) {
-    const el = document.getElementById(containerId);
-    if (!el) return;
+    const slot = document.getElementById('dartboardSlot');
+    if (!slot) return;
     dc = document.createElement('canvas');
     dc.width = BW; dc.height = BH;
-
-    // CSS 3D perspective tilt — this is what makes it look 3D
     dc.style.cssText = [
-      'display:block',
-      'margin:8px auto',
+      'display:inline-block',
       'border-radius:50%',
       'transform:perspective(700px) rotateX(22deg)',
-      'transform-origin:center top',
-      'box-shadow:0 24px 48px rgba(0,0,0,0.9), 0 0 0 5px #0d0700',
+      'transform-origin:center center',
+      'box-shadow:0 16px 40px rgba(0,0,0,0.9), 0 0 0 4px #0d0700',
+      'max-width:100%',
     ].join(';');
-
-    const ref = el.querySelector('#throwBtn') || el.firstChild;
-    el.insertBefore(dc, ref);
+    slot.appendChild(dc);
     dx = dc.getContext('2d');
     drawBoard();
     dartLoop();
