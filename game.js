@@ -141,12 +141,14 @@
   // ---- Darts actions ----
   function throwDart() {
     const crit = Math.random() < dartCrit();
-    const accuracy = 0.4 + Math.random() * 0.6; // 40%-100%
+    const accuracy = 0.4 + Math.random() * 0.6;
     let payout = dartValue() * accuracy * (crit ? 10 : 1);
     payout = Math.max(1, payout);
     earn(payout);
     state.darts.best = Math.max(state.darts.best, payout);
     logTo('dartsLog', `🎯 ${crit ? 'CRIT! ' : ''}Hit for ${money(payout)} (${Math.round(accuracy * 100)}% accuracy)`, crit ? 'good' : '');
+    Anim.throwDart(accuracy, crit);
+    Anim.floatFromEl('+' + money(payout * prestigeMultiplier()), $('throwBtn'), crit ? '#ffd166' : '#6ee7a0');
     refreshTop();
     checkClear('darts', 'dartsGoal', 'dartsGoalText');
   }
@@ -158,7 +160,8 @@
     if (state.gold < t.cost) { toast(`Not enough gold for a ${t.name} ticket (${money(t.cost)}).`); return; }
     state.gold -= t.cost;
     const winChance = 0.25 + scratchLuck();
-    if (Math.random() < winChance) {
+    const won = Math.random() < winChance;
+    if (won) {
       const jackpot = Math.random() < 0.04;
       let win = t.maxWin * (0.2 + Math.random() * 0.8);
       if (jackpot) win = t.maxWin * jackpotMult();
@@ -166,8 +169,11 @@
       earn(win);
       state.scratch.best = Math.max(state.scratch.best, win);
       logTo('scratchLog', `🎟 ${jackpot ? '💰 JACKPOT! ' : ''}${t.name} ticket won ${money(win)}`, jackpot ? 'good' : '');
+      Anim.revealScratch(true, jackpot);
+      Anim.floatFromEl('+' + money(win * prestigeMultiplier()), $('scratchBtn'), jackpot ? '#ffd166' : '#6ee7a0');
     } else {
       logTo('scratchLog', `🎟 ${t.name} ticket — no win. (-${money(t.cost)})`, 'muted');
+      Anim.revealScratch(false, false);
     }
     refreshTop();
     checkClear('scratch', 'scratchGoal', 'scratchGoalText');
@@ -551,6 +557,9 @@
     updatePrestigeBtn();
     updateDailyBtn();
     setInterval(updateDailyBtn, 60000);
+    Anim.init();
+    Anim.initDartboard('dartRoomPanel');
+    Anim.initScratchCard('scratchRoomPanel');
     connectWS();
     setInterval(tick, 200);
     setInterval(saveGame, 5000);

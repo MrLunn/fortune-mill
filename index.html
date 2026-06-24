@@ -147,7 +147,7 @@
     <!-- DARTS ROOM -->
     <section data-view="darts">
       <div class="row">
-        <div class="col panel">
+        <div class="col panel" id="dartRoomPanel">
           <h2>🎯 Dart Room</h2>
           <p class="muted">Throw darts for gold. Time it well — the closer to center, the bigger the payout.</p>
           <div class="progress"><div id="dartsGoal"></div></div>
@@ -167,7 +167,7 @@
     <!-- SCRATCH ROOM -->
     <section data-view="scratch" class="hidden">
       <div class="row">
-        <div class="col panel">
+        <div class="col panel" id="scratchRoomPanel">
           <h2>🎟 Scratcher Room</h2>
           <p class="muted">Buy a ticket, scratch it, hope for a jackpot. Bigger tickets, bigger swings.</p>
           <div class="progress"><div id="scratchGoal"></div></div>
@@ -261,6 +261,7 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<script src="animations.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
