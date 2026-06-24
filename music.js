@@ -221,5 +221,49 @@ const Music = (() => {
     osc('sine', N.C5, t + 0.06, 0.12, 0.07);
   }
 
-  return { start, toggleMute, isMuted, sfxDart, sfxWin, sfxLoss, sfxPrestige, sfxDaily, sfxBuy };
+  function sfxAchievement() {
+    ensureCtx();
+    const t = ctx.currentTime;
+    [N.E5, N.G5, N.A5].forEach((f, i) => osc('sine', f, t + i * 0.08, 0.22, 0.10));
+    noise(t + 0.2, 0.08, 0.05, 6000);
+  }
+
+  function sfxLevelUp() {
+    ensureCtx();
+    const t = ctx.currentTime;
+    [N.C4, N.E4, N.G4, N.C5, N.E5].forEach((f, i) => osc('square', f, t + i * 0.07, 0.25, 0.09));
+    osc('sine', N.G5, t + 0.4, 0.4, 0.12);
+  }
+
+  function sfxMilestone() {
+    ensureCtx();
+    const t = ctx.currentTime;
+    const seq = [N.C4,N.G4,N.C5,N.G5,N.C5*2];
+    seq.forEach((f, i) => {
+      osc('square', f, t + i * 0.06, 0.3, 0.11);
+      if (i >= 2) noise(t + i * 0.06, 0.05, 0.06, 5000);
+    });
+  }
+
+  function sfxLucky() {
+    ensureCtx();
+    const t = ctx.currentTime;
+    // shimmering arpeggiated twinkle
+    const lucky = [N.G4, N.A4, N.C5, N.E5, N.G5, N.A5, N.G5, N.E5];
+    lucky.forEach((f, i) => osc('sine', f, t + i * 0.055, 0.2, 0.09));
+    noise(t + 0.3, 0.1, 0.04, 7000);
+  }
+
+  function sfxSpin() {
+    ensureCtx();
+    const t = ctx.currentTime;
+    // rising noise burst → tick ticks
+    noise(t, 0.1, 0.07, 4000);
+    for (let i = 0; i < 10; i++) {
+      const delay = 0.1 + i * 0.05;
+      osc('triangle', 800 + i * 60, t + delay, 0.04, 0.06);
+    }
+  }
+
+  return { start, toggleMute, isMuted, sfxDart, sfxWin, sfxLoss, sfxPrestige, sfxDaily, sfxBuy, sfxAchievement, sfxLevelUp, sfxMilestone, sfxLucky, sfxSpin };
 })();

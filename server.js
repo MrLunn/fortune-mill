@@ -14,7 +14,7 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 
 // Only these files are ever served to the browser. Everything else
 // (server.js, data.json, package.json, etc.) stays private.
-const STATIC_WHITELIST = new Set(['index.html', 'game.js', 'animations.js', 'music.js']);
+const STATIC_WHITELIST = new Set(['index.html', 'game.js', 'animations.js', 'music.js', 'dopamine.js']);
 
 let db = { players: {}, guilds: {} };
 try {

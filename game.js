@@ -9,10 +9,14 @@
 
   // ---- Game state (the bit we persist) ----
   const state = {
-    gold: 0,            // current spendable net worth
-    lifetime: 0,        // total ever earned (for leaderboard)
+    gold: 0, lifetime: 0,
     darts: { cleared: false, best: 0, upgrades: {} },
     scratch: { cleared: false, best: 0, upgrades: {} },
+    crits: 0, scratchWins: 0, jackpots: 0,
+    xp: 0, level: 1, maxCombo: 0,
+    luckyHours: 0, spins: 0,
+    achievements: [], milestones: [],
+    lastSaveTime: 0, lastSpin: 0,
   };
 
   let auth = { username: null, token: null, prestige: 0, dailyStreak: 0, lastClaim: 0 };
@@ -119,9 +123,16 @@
 
   // ---- Earning ----
   function earn(amount) {
-    const boosted = amount * prestigeMultiplier();
+    const comboM = typeof Dopamine !== 'undefined' ? Dopamine.getComboMult() : 1;
+    const luckyM = typeof Dopamine !== 'undefined' && Dopamine.isLucky() ? 2 : 1;
+    const levelM = typeof Dopamine !== 'undefined' ? Dopamine.getLevelBonus() : 1;
+    const boosted = amount * prestigeMultiplier() * comboM * luckyM * levelM;
     state.gold += boosted;
     state.lifetime += boosted;
+    if (typeof Dopamine !== 'undefined') {
+      Dopamine.addXP(boosted);
+      Dopamine.checkMilestones(state.lifetime);
+    }
   }
 
   function checkClear(room, goalDivId, goalTextId) {
@@ -147,6 +158,8 @@
     earn(payout);
     state.darts.best = Math.max(state.darts.best, payout);
     logTo('dartsLog', `🎯 ${crit ? 'CRIT! ' : ''}Hit for ${money(payout)} (${Math.round(accuracy * 100)}% accuracy)`, crit ? 'good' : '');
+    if (crit) state.crits = (state.crits || 0) + 1;
+    if (typeof Dopamine !== 'undefined') { Dopamine.onThrow(); Dopamine.checkAchievements(); }
     Anim.throwDart(accuracy, crit);
     Anim.floatFromEl('+' + money(payout * prestigeMultiplier()), $('throwBtn'), crit ? '#ffd166' : '#6ee7a0');
     Music.sfxDart(crit);
@@ -169,6 +182,9 @@
       win = Math.max(t.cost, Math.floor(win));
       earn(win);
       state.scratch.best = Math.max(state.scratch.best, win);
+      state.scratchWins = (state.scratchWins || 0) + 1;
+      if (jackpot) state.jackpots = (state.jackpots || 0) + 1;
+      if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
       logTo('scratchLog', `🎟 ${jackpot ? '💰 JACKPOT! ' : ''}${t.name} ticket won ${money(win)}`, jackpot ? 'good' : '');
       Anim.revealScratch(true, jackpot);
       Anim.floatFromEl('+' + money(win * prestigeMultiplier()), $('scratchBtn'), jackpot ? '#ffd166' : '#6ee7a0');
@@ -312,6 +328,7 @@
 
   async function saveGame() {
     if (!auth.token) return;
+    state.lastSaveTime = Date.now();
     try {
       await api('/api/save', {
         token: auth.token,
@@ -566,6 +583,15 @@
     Anim.initDartboard('dartRoomPanel');
     Anim.initScratchCard('scratchRoomPanel');
     Music.start();
+    if (typeof Dopamine !== 'undefined') {
+      Dopamine.init(state, auth, perSecond, (amt) => { earn(amt); refreshTop(); });
+      const offline = Dopamine.calcOffline();
+      if (offline > 0) {
+        earn(offline);
+        refreshTop();
+        toast(`💤 Offline earnings: ${money(offline)} (8h cap, 50% rate)`);
+      }
+    }
     connectWS();
     setInterval(tick, 200);
     setInterval(saveGame, 5000);
@@ -579,6 +605,18 @@
       Object.assign(state, s);
       state.darts = Object.assign({ cleared: false, best: 0, upgrades: {} }, s.darts);
       state.scratch = Object.assign({ cleared: false, best: 0, upgrades: {} }, s.scratch);
+      state.achievements = s.achievements || [];
+      state.milestones   = s.milestones   || [];
+      state.crits        = s.crits        || 0;
+      state.scratchWins  = s.scratchWins  || 0;
+      state.jackpots     = s.jackpots     || 0;
+      state.xp           = s.xp           || 0;
+      state.level        = s.level        || 1;
+      state.maxCombo     = s.maxCombo     || 0;
+      state.luckyHours   = s.luckyHours   || 0;
+      state.spins        = s.spins        || 0;
+      state.lastSaveTime = s.lastSaveTime || 0;
+      state.lastSpin     = s.lastSpin     || 0;
     } catch {}
   }
 
