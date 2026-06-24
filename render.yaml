@@ -1,0 +1,14 @@
+# Render Blueprint — deploys Fortune Mill as a free web service.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: fortune-mill
+    runtime: node
+    plan: free
+    # This app has ZERO npm dependencies, so there is nothing to build.
+    # A no-op keeps Render's build phase from ever failing.
+    buildCommand: echo "No build needed — zero dependencies."
+    startCommand: node server.js
+    # Render injects PORT automatically; server.js already reads process.env.PORT.
+    healthCheckPath: /
+    autoDeploy: true
