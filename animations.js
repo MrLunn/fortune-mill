@@ -1,6 +1,38 @@
-/* animations.js — 2D canvas layer for Fortune Mill */
+/* animations.js — 3D canvas/CSS layer for Fortune Mill */
 const Anim = (() => {
   'use strict';
+
+  // ── Inject CSS for 3D scratch cards ───────────────────────────────────────
+  function injectCSS() {
+    const s = document.createElement('style');
+    s.textContent = `
+      .scratch-cards {
+        display: flex; gap: 16px; justify-content: center;
+        padding: 14px 8px; perspective: 700px;
+      }
+      .scratch-card {
+        width: 82px; height: 92px; position: relative;
+        transform-style: preserve-3d;
+        transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .scratch-card.flipped { transform: rotateY(180deg); }
+      .sc-front, .sc-back {
+        position: absolute; width: 100%; height: 100%;
+        border-radius: 10px; display: flex; align-items: center;
+        justify-content: center; font-size: 30px; font-weight: bold;
+        font-family: "JetBrains Mono", Consolas, monospace;
+        backface-visibility: hidden; -webkit-backface-visibility: hidden;
+        border: 2px solid; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+      }
+      .sc-front {
+        background: linear-gradient(145deg, #b8922a, #e8c96a 50%, #9a7020);
+        border-color: #7a5c18; color: #5a3c10;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+      }
+      .sc-back { transform: rotateY(180deg); border-color: #1e2a36; }
+    `;
+    document.head.appendChild(s);
+  }
 
   // ── Floating text overlay ─────────────────────────────────────────────────
   const floaters = [];
@@ -53,7 +85,7 @@ const Anim = (() => {
     requestAnimationFrame(floatLoop);
   }
 
-  // ── Dartboard ─────────────────────────────────────────────────────────────
+  // ── Dartboard (3D via CSS perspective + depth rim) ────────────────────────
   const BW = 280, BH = 300, CX = 140, CY = 148;
   let dc, dx;
   const darts = [];
@@ -62,21 +94,28 @@ const Anim = (() => {
     const ctx = dx;
     ctx.clearRect(0, 0, BW, BH);
 
+    // depth shadow rim (gives 3D thickness illusion)
+    ctx.beginPath();
+    ctx.ellipse(CX, CY + 10, 146, 20, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+
     // wood surround
     ctx.beginPath();
     ctx.arc(CX, CY, 144, 0, Math.PI * 2);
-    const wood = ctx.createRadialGradient(CX, CY, 100, CX, CY, 144);
-    wood.addColorStop(0, '#4a2c0a');
-    wood.addColorStop(1, '#2b1605');
+    const wood = ctx.createRadialGradient(CX - 30, CY - 30, 10, CX, CY, 144);
+    wood.addColorStop(0, '#5a3410');
+    wood.addColorStop(0.6, '#3b2005');
+    wood.addColorStop(1, '#1e0f00');
     ctx.fillStyle = wood;
     ctx.fill();
 
     const SEG = 20;
     const rings = [
-      { outer: 130, inner: 118, alt: ['#cc2222', '#22aa22'] }, // double
-      { outer: 118, inner: 82,  alt: ['#1a1a1a', '#f0ead8'] }, // outer field
-      { outer: 82,  inner: 68,  alt: ['#cc2222', '#22aa22'] }, // triple
-      { outer: 68,  inner: 22,  alt: ['#1a1a1a', '#f0ead8'] }, // inner field
+      { outer: 130, inner: 118, alt: ['#cc2222', '#22aa22'] },
+      { outer: 118, inner: 82,  alt: ['#1a1a1a', '#f0ead8'] },
+      { outer: 82,  inner: 68,  alt: ['#cc2222', '#22aa22'] },
+      { outer: 68,  inner: 22,  alt: ['#1a1a1a', '#f0ead8'] },
     ];
 
     for (const ring of rings) {
@@ -96,22 +135,14 @@ const Anim = (() => {
     }
 
     // bull
-    ctx.beginPath();
-    ctx.arc(CX, CY, 22, 0, Math.PI * 2);
-    ctx.fillStyle = '#22aa22';
-    ctx.fill();
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX, CY, 22, 0, Math.PI * 2);
+    ctx.fillStyle = '#22aa22'; ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.stroke();
 
     // bullseye
-    ctx.beginPath();
-    ctx.arc(CX, CY, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#cc2222';
-    ctx.fill();
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX, CY, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#cc2222'; ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.stroke();
 
     // numbers
     const NUMS = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
@@ -121,27 +152,40 @@ const Anim = (() => {
     ctx.fillStyle = '#e8e0cc';
     for (let i = 0; i < SEG; i++) {
       const angle = (i / SEG) * Math.PI * 2 - Math.PI / 2;
-      const r = 138;
-      ctx.fillText(NUMS[i], CX + Math.cos(angle) * r, CY + Math.sin(angle) * r);
+      ctx.fillText(NUMS[i], CX + Math.cos(angle) * 137, CY + Math.sin(angle) * 137);
     }
 
-    // wire ring highlights
+    // wire highlights
     for (const r of [10, 22, 68, 82, 118, 130]) {
-      ctx.beginPath();
-      ctx.arc(CX, CY, r, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(180,180,180,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(200,200,200,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
     }
+
+    // top specular highlight (sells the 3D depth)
+    const shine = ctx.createLinearGradient(CX - 100, CY - 140, CX + 100, CY - 60);
+    shine.addColorStop(0, 'rgba(255,255,255,0.0)');
+    shine.addColorStop(0.4, 'rgba(255,255,255,0.08)');
+    shine.addColorStop(1, 'rgba(255,255,255,0.0)');
+    ctx.beginPath(); ctx.arc(CX, CY, 143, Math.PI, Math.PI * 2);
+    ctx.fillStyle = shine; ctx.fill();
   }
 
   function initDartboard(containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
     dc = document.createElement('canvas');
-    dc.width = BW;
-    dc.height = BH;
-    dc.style.cssText = 'display:block;margin:8px auto;border-radius:50%;box-shadow:0 0 18px rgba(0,0,0,0.8);';
+    dc.width = BW; dc.height = BH;
+
+    // CSS 3D perspective tilt — this is what makes it look 3D
+    dc.style.cssText = [
+      'display:block',
+      'margin:8px auto',
+      'border-radius:50%',
+      'transform:perspective(700px) rotateX(22deg)',
+      'transform-origin:center top',
+      'box-shadow:0 24px 48px rgba(0,0,0,0.9), 0 0 0 5px #0d0700',
+    ].join(';');
+
     const ref = el.querySelector('#throwBtn') || el.firstChild;
     el.insertBefore(dc, ref);
     dx = dc.getContext('2d');
@@ -155,17 +199,8 @@ const Anim = (() => {
     const r = Math.random() * maxR;
     const tx = CX + Math.cos(angle) * r;
     const ty = CY + Math.sin(angle) * r;
-    darts.push({
-      sx: tx + (Math.random() - 0.5) * 80,
-      sy: -60,
-      tx, ty,
-      t: 0,
-      settled: false,
-      age: 0,
-      isCrit,
-      particles: [],
-    });
-    // trim old settled darts so board doesn't get cluttered
+    darts.push({ sx: tx + (Math.random() - 0.5) * 80, sy: -60, tx, ty, t: 0, settled: false, age: 0, isCrit, particles: [] });
+    // trim oldest settled dart when board gets crowded
     if (darts.filter(d => d.settled).length > 5) {
       const idx = darts.findIndex(d => d.settled && d.particles.length === 0);
       if (idx !== -1) darts.splice(idx, 1);
@@ -178,57 +213,37 @@ const Anim = (() => {
 
     for (let i = darts.length - 1; i >= 0; i--) {
       const d = darts[i];
-
       if (!d.settled) {
         d.t = Math.min(1, d.t + 0.065);
         const e = 1 - Math.pow(1 - d.t, 3);
         d.cx = d.sx + (d.tx - d.sx) * e;
         d.cy = d.sy + (d.ty - d.sy) * e;
-        if (d.t >= 1) {
-          d.settled = true;
-          impactParticles(d);
-        }
+        if (d.t >= 1) { d.settled = true; impactParticles(d); }
       } else {
         d.age++;
-        if (d.age > 180 && d.particles.length === 0) {
-          darts.splice(i, 1);
-          continue;
-        }
+        if (d.age > 180 && d.particles.length === 0) { darts.splice(i, 1); continue; }
       }
 
       for (let p = d.particles.length - 1; p >= 0; p--) {
         const pt = d.particles[p];
         pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.12; pt.life--;
         if (pt.life <= 0) { d.particles.splice(p, 1); continue; }
-        dx.beginPath();
-        dx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+        dx.beginPath(); dx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
         dx.globalAlpha = pt.life / pt.maxLife;
-        dx.fillStyle = pt.color;
-        dx.fill();
-        dx.globalAlpha = 1;
+        dx.fillStyle = pt.color; dx.fill(); dx.globalAlpha = 1;
       }
 
-      const drawX = d.settled ? d.tx : d.cx;
-      const drawY = d.settled ? d.ty : d.cy;
-      drawDart(dx, drawX, drawY, d.isCrit);
+      drawDart(dx, d.settled ? d.tx : d.cx, d.settled ? d.ty : d.cy, d.isCrit);
     }
     requestAnimationFrame(dartLoop);
   }
 
   function impactParticles(d) {
-    const count = d.isCrit ? 18 : 7;
-    for (let i = 0; i < count; i++) {
+    const n = d.isCrit ? 18 : 7;
+    for (let i = 0; i < n; i++) {
       const speed = 1.2 + Math.random() * 3.5;
       const angle = Math.random() * Math.PI * 2;
-      d.particles.push({
-        x: d.tx, y: d.ty,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1.5,
-        r: 1.5 + Math.random() * 2,
-        life: 22 + Math.random() * 22,
-        maxLife: 44,
-        color: d.isCrit ? '#ffd166' : '#6ee7a0',
-      });
+      d.particles.push({ x: d.tx, y: d.ty, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 1.5, r: 1.5 + Math.random() * 2, life: 22 + Math.random() * 22, maxLife: 44, color: d.isCrit ? '#ffd166' : '#6ee7a0' });
     }
   }
 
@@ -236,81 +251,53 @@ const Anim = (() => {
     ctx.save();
     ctx.translate(x, y);
     // tip
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-2.5, -13);
-    ctx.lineTo(2.5, -13);
-    ctx.closePath();
-    ctx.fillStyle = isCrit ? '#ffd166' : '#d4d4d4';
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-2.5, -13); ctx.lineTo(2.5, -13); ctx.closePath();
+    ctx.fillStyle = isCrit ? '#ffd166' : '#d4d4d4'; ctx.fill();
     // barrel
-    const bgrad = ctx.createLinearGradient(-3, -13, 3, -13);
-    bgrad.addColorStop(0, '#888');
-    bgrad.addColorStop(0.5, '#ccc');
-    bgrad.addColorStop(1, '#888');
-    ctx.fillStyle = bgrad;
-    ctx.fillRect(-2.5, -30, 5, 17);
+    const bg = ctx.createLinearGradient(-3, -13, 3, -13);
+    bg.addColorStop(0, '#666'); bg.addColorStop(0.5, '#ccc'); bg.addColorStop(1, '#666');
+    ctx.fillStyle = bg; ctx.fillRect(-2.5, -30, 5, 17);
     // shaft
-    ctx.fillStyle = '#aaa';
-    ctx.fillRect(-1, -40, 2, 10);
+    ctx.fillStyle = '#aaa'; ctx.fillRect(-1, -40, 2, 10);
     // flights
-    const fc = isCrit ? '#ff6b6b' : '#76b3ff';
-    ctx.beginPath();
-    ctx.moveTo(0, -40); ctx.lineTo(-10, -58); ctx.lineTo(0, -46);
-    ctx.closePath();
-    ctx.fillStyle = fc;
-    ctx.globalAlpha = 0.9;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(0, -40); ctx.lineTo(10, -58); ctx.lineTo(0, -46);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    const fc2 = isCrit ? '#ff6b6b' : '#76b3ff';
+    ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(-10, -58); ctx.lineTo(0, -46); ctx.closePath();
+    ctx.fillStyle = fc2; ctx.globalAlpha = 0.9; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(10, -58); ctx.lineTo(0, -46); ctx.closePath();
+    ctx.fill(); ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  // ── Scratch card ──────────────────────────────────────────────────────────
-  const SW = 300, SH = 130;
-  let sc, sx;
-  let scratchAnim = null;
+  // ── Scratch cards (CSS 3D flip) ───────────────────────────────────────────
+  let cardEls = [];
 
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
+  function initScratchCard(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
 
-  function drawIdleScratch() {
-    if (!sx) return;
-    const ctx = sx;
-    ctx.clearRect(0, 0, SW, SH);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'scratch-cards';
+    cardEls = [];
+
     for (let i = 0; i < 3; i++) {
-      const px = 15 + i * 95;
-      const grad = ctx.createLinearGradient(px, 20, px, 105);
-      grad.addColorStop(0, '#c8a84b');
-      grad.addColorStop(0.5, '#e8c96a');
-      grad.addColorStop(1, '#a07830');
-      ctx.fillStyle = grad;
-      roundRect(ctx, px, 20, 80, 85, 8);
-      ctx.fill();
-      ctx.strokeStyle = '#7a5c20';
-      ctx.lineWidth = 2;
-      roundRect(ctx, px, 20, 80, 85, 8);
-      ctx.stroke();
-      ctx.font = 'bold 30px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#6a4c18';
-      ctx.fillText('?', px + 40, 62);
+      const card = document.createElement('div');
+      card.className = 'scratch-card';
+
+      const front = document.createElement('div');
+      front.className = 'sc-front';
+      front.textContent = '?';
+
+      const back = document.createElement('div');
+      back.className = 'sc-back';
+
+      card.appendChild(front);
+      card.appendChild(back);
+      wrapper.appendChild(card);
+      cardEls.push({ card, back });
     }
+
+    const ref = el.querySelector('#scratchBtn') || el.firstChild;
+    el.insertBefore(wrapper, ref);
   }
 
   function shuffle(arr) {
@@ -323,119 +310,33 @@ const Anim = (() => {
   }
 
   function revealScratch(won, jackpot) {
+    if (!cardEls.length) return;
     let symbols;
-    if (jackpot)     symbols = ['💰', '💰', '💰'];
-    else if (won)    symbols = shuffle(['$', '$', '7']);
-    else             symbols = shuffle(['X', '$', 'X']);
+    if (jackpot)      symbols = ['💰', '💰', '💰'];
+    else if (won)     symbols = shuffle(['$', '$', '7']);
+    else              symbols = shuffle(['X', '$', 'X']);
 
-    scratchAnim = {
-      symbols,
-      won,
-      jackpot,
-      panels: [
-        { t: 0, delay: 0 },
-        { t: 0, delay: 14 },
-        { t: 0, delay: 28 },
-      ],
-      finished: false,
-    };
-  }
-
-  function initScratchCard(containerId) {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    sc = document.createElement('canvas');
-    sc.width = SW;
-    sc.height = SH;
-    sc.style.cssText = 'display:block;margin:8px auto;border-radius:8px;box-shadow:0 0 12px rgba(0,0,0,0.6);';
-    const ref = el.querySelector('#scratchBtn') || el.firstChild;
-    el.insertBefore(sc, ref);
-    sx = sc.getContext('2d');
-    drawIdleScratch();
-    scratchLoop();
-  }
-
-  function scratchLoop() {
-    if (!sx) { requestAnimationFrame(scratchLoop); return; }
-    if (!scratchAnim) { requestAnimationFrame(scratchLoop); return; }
-
-    const ctx = sx;
-    const a = scratchAnim;
-    ctx.clearRect(0, 0, SW, SH);
-
-    let allDone = true;
     for (let i = 0; i < 3; i++) {
-      const panel = a.panels[i];
-      if (panel.delay > 0) { panel.delay--; allDone = false; }
-      else if (panel.t < 1) { panel.t = Math.min(1, panel.t + 0.055); allDone = false; }
+      const { card, back } = cardEls[i];
+      card.classList.remove('flipped');
 
-      const t = panel.t;
-      const px = 15 + i * 95;
-      const sym = a.symbols[i];
-      const isWinSym = sym !== 'X';
-      const symColor = isWinSym ? (sym === '💰' || sym === '7' ? '#ffd166' : '#6ee7a0') : '#ff6b6b';
-      const bgColor  = isWinSym ? '#0e2016' : '#200e0e';
+      const sym = symbols[i];
+      const isWin = sym !== 'X';
+      const color = sym === '💰' || sym === '7' ? '#ffd166' : isWin ? '#6ee7a0' : '#ff6b6b';
+      back.textContent = sym;
+      back.style.cssText = `background:${isWin ? '#0e2016' : '#200e0e'};border-color:${color};color:${color};font-size:${sym === '💰' ? '26px' : '30px'};`;
 
-      ctx.save();
-      ctx.translate(px + 40, 62);
-
-      if (t < 0.5) {
-        // fold away: cover shrinks horizontally
-        const scaleX = 1 - t * 2;
-        ctx.scale(scaleX, 1);
-        const grad = ctx.createLinearGradient(-40, -42, 40, -42);
-        grad.addColorStop(0, '#a07830');
-        grad.addColorStop(0.5, '#e8c96a');
-        grad.addColorStop(1, '#a07830');
-        ctx.fillStyle = grad;
-        roundRect(ctx, -40, -42, 80, 85, 8);
-        ctx.fill();
-        ctx.strokeStyle = '#7a5c20';
-        ctx.lineWidth = 2;
-        roundRect(ctx, -40, -42, 80, 85, 8);
-        ctx.stroke();
-        ctx.font = 'bold 30px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#6a4c18';
-        ctx.fillText('?', 0, 0);
-      } else {
-        // reveal: result panel unfolds
-        const scaleX = (t - 0.5) * 2;
-        ctx.scale(scaleX, 1);
-        ctx.fillStyle = bgColor;
-        roundRect(ctx, -40, -42, 80, 85, 8);
-        ctx.fill();
-        ctx.strokeStyle = symColor;
-        ctx.lineWidth = 2;
-        roundRect(ctx, -40, -42, 80, 85, 8);
-        ctx.stroke();
-        ctx.font = 'bold 30px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = symColor;
-        ctx.fillText(sym, 0, 0);
-      }
-
-      ctx.restore();
+      const delay = i * 230;
+      setTimeout(() => card.classList.add('flipped'), delay);
+      setTimeout(() => card.classList.remove('flipped'), delay + 2400);
     }
-
-    if (allDone && !a.finished) {
-      a.finished = true;
-      setTimeout(() => { scratchAnim = null; drawIdleScratch(); }, 2200);
-    }
-
-    requestAnimationFrame(scratchLoop);
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
-  return {
-    init: initFloater,
-    initDartboard,
-    initScratchCard,
-    throwDart: launchDart,
-    revealScratch,
-    float,
-    floatFromEl,
-  };
+  function init() {
+    injectCSS();
+    initFloater();
+  }
+
+  return { init, initDartboard, initScratchCard, throwDart: launchDart, revealScratch, float, floatFromEl };
 })();
