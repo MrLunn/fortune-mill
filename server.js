@@ -1,49 +1,116 @@
 // Fortune Mill (text edition) — zero-dependency Node server.
-// Uses only Node built-ins: http, fs, crypto. No `npm install` needed.
+// Built-ins only: http, https, fs, crypto. No `npm install` needed.
 // Run with:  node server.js   then open http://localhost:3000
-// All files (server + client) live in one flat folder — no subfolders.
+//
+// Optional environment variables:
+//   PORT                       - port to listen on (default 3000)
+//   ROOM_PASSWORD              - if set, players must enter it to register/log in
+//   UPSTASH_REDIS_REST_URL     - if set (with token), saves persist to Upstash Redis
+//   UPSTASH_REDIS_REST_TOKEN   - Upstash REST token
+// With no env vars set, the game runs locally and saves to a data.json file.
 
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const ROOT_DIR = __dirname;
 const DATA_FILE = path.join(__dirname, 'data.json');
+const ROOM_PASSWORD = process.env.ROOM_PASSWORD || '';
 
-// Only these files are ever served to the browser. Everything else
-// (server.js, data.json, package.json, etc.) stays private.
-const STATIC_WHITELIST = new Set(['index.html', 'game.js', 'animations.js', 'music.js', 'dopamine.js']);
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || '';
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const USE_REDIS = !!(UPSTASH_URL && UPSTASH_TOKEN);
+const REDIS_KEY = 'fortunemill:db';
+
+// Only these files are ever served to the browser. Everything else stays private.
+const STATIC_WHITELIST = new Set(['index.html', 'game.js']);
 
 let db = { players: {}, guilds: {} };
-try {
-  if (fs.existsSync(DATA_FILE)) {
-    db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    db.players = db.players || {};
-    db.guilds = db.guilds || {};
-  }
-} catch (e) {
-  console.error('Could not read data.json, starting fresh:', e.message);
+
+// ---------------------------------------------------------------------------
+// Upstash Redis REST helper (zero-dependency, uses built-in https)
+// Sends commands as a JSON array in the POST body, e.g. ["SET","key","value"].
+// ---------------------------------------------------------------------------
+function redisCommand(args) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(UPSTASH_URL); } catch (e) { return reject(new Error('Bad UPSTASH_REDIS_REST_URL')); }
+    const payload = JSON.stringify(args);
+    const req = https.request({
+      hostname: u.hostname,
+      port: u.port || 443,
+      path: '/',
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, (res) => {
+      let d = '';
+      res.on('data', (c) => (d += c));
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          if (j.error) reject(new Error(j.error));
+          else resolve(j.result);
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
 }
 
-const TEMP_FILE = DATA_FILE + '.tmp';
+async function loadDB() {
+  if (USE_REDIS) {
+    try {
+      const val = await redisCommand(['GET', REDIS_KEY]);
+      if (val) { db = JSON.parse(val); db.players = db.players || {}; db.guilds = db.guilds || {}; }
+      console.log('Loaded saved state from Upstash Redis.');
+    } catch (e) {
+      console.error('Redis load failed, starting fresh:', e.message);
+    }
+  } else {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        db.players = db.players || {};
+        db.guilds = db.guilds || {};
+      }
+    } catch (e) {
+      console.error('Could not read data.json, starting fresh:', e.message);
+    }
+  }
+}
+
+// File mode: debounced disk write. Redis mode: mark dirty and flush on a
+// timer so we stay well within Upstash's free 500K-commands/month limit
+// no matter how many players are active.
 let saveTimer = null;
+let dirty = false;
 function saveDB() {
+  if (USE_REDIS) { dirty = true; return; }
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    const payload = JSON.stringify(db);
-    // Write to temp file then atomically rename — prevents corrupt data.json on crash
-    fs.writeFile(TEMP_FILE, payload, (err) => {
-      if (err) { console.error('Save (write) failed:', err.message); return; }
-      fs.rename(TEMP_FILE, DATA_FILE, (err2) => {
-        if (err2) console.error('Save (rename) failed:', err2.message);
-      });
-    });
-  }, 500);
+    fs.writeFile(DATA_FILE, JSON.stringify(db), (err) => { if (err) console.error('Save failed:', err.message); });
+  }, 800);
 }
+function flushRedis() {
+  if (!USE_REDIS || !dirty) return;
+  dirty = false;
+  redisCommand(['SET', REDIS_KEY, JSON.stringify(db)]).catch((e) => { dirty = true; console.error('Redis save failed:', e.message); });
+}
+if (USE_REDIS) setInterval(flushRedis, 12000);
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 const token = () => crypto.randomBytes(16).toString('hex');
 
 function combatPower(p) {
@@ -68,11 +135,10 @@ const findPlayerByToken = (tok) =>
   tok ? Object.values(db.players).find((p) => p.token === tok) || null : null;
 
 function guildTreasure(g) {
-  const memberSum = g.members.reduce((sum, m) => {
+  return g.members.reduce((sum, m) => {
     const p = db.players[m.toLowerCase()];
     return sum + (p ? p.lifetime || 0 : 0);
   }, 0);
-  return memberSum + (g.bonusTreasure || 0);
 }
 
 function guildView(key) {
@@ -116,6 +182,12 @@ function resolveDuel(a, b) {
   return { winner, log };
 }
 
+const ALL_ROOMS = ['darts', 'scratch', 'pachinko', 'sushi', 'gacha'];
+function allRoomsCleared(state) {
+  if (!state) return false;
+  return ALL_ROOMS.every((r) => state[r] && state[r].cleared);
+}
+
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.ico': 'image/x-icon' };
 
 function sendJSON(res, code, obj) {
@@ -151,7 +223,15 @@ async function handleApi(req, res) {
   const method = req.method;
   const body = method === 'POST' ? await readBody(req) : {};
 
+  // Tells the client whether to show a password field on the login screen.
+  if (url === '/api/config' && method === 'GET') {
+    return sendJSON(res, 200, { passwordRequired: !!ROOM_PASSWORD });
+  }
+
   if (url === '/api/register' && method === 'POST') {
+    if (ROOM_PASSWORD && String(body.password || '') !== ROOM_PASSWORD) {
+      return sendJSON(res, 403, { error: 'Wrong room password.' });
+    }
     const username = String(body.username || '').trim().slice(0, 20);
     if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) return sendJSON(res, 400, { error: 'Username must be 3-20 letters, numbers, or underscores.' });
     if (db.players[username.toLowerCase()]) return sendJSON(res, 409, { error: 'That name is taken. Try logging in.' });
@@ -162,6 +242,9 @@ async function handleApi(req, res) {
   }
 
   if (url === '/api/login' && method === 'POST') {
+    if (ROOM_PASSWORD && String(body.password || '') !== ROOM_PASSWORD) {
+      return sendJSON(res, 403, { error: 'Wrong room password.' });
+    }
     const p = db.players[String(body.username || '').trim().toLowerCase()];
     if (!p) return sendJSON(res, 404, { error: 'No such player. Register first.' });
     return sendJSON(res, 200, { username: p.username, token: p.token, state: p.state, guild: p.guild, prestige: p.prestige || 0, dailyStreak: p.dailyStreak || 0, lastClaim: p.lastClaim || 0 });
@@ -187,12 +270,8 @@ async function handleApi(req, res) {
   if (url === '/api/prestige' && method === 'POST') {
     const p = findPlayerByToken(body.token);
     if (!p) return sendJSON(res, 401, { error: 'Bad token.' });
-    const s = body.state || {};
-    const dartsCleared = s.darts && s.darts.cleared;
-    const scratchCleared = s.scratch && s.scratch.cleared;
-    if (!dartsCleared || !scratchCleared) return sendJSON(res, 400, { error: 'Clear both rooms first.' });
+    if (!allRoomsCleared(body.state)) return sendJSON(res, 400, { error: 'Clear all five rooms first.' });
     p.prestige = (p.prestige || 0) + 1;
-    // Reset progress state but preserve lifetime, wins/losses, guild
     p.state = null;
     p.netWorth = 0;
     saveDB();
@@ -209,7 +288,6 @@ async function handleApi(req, res) {
       const nextIn = Math.ceil(24 - hoursSinceLast);
       return sendJSON(res, 400, { error: `Already claimed today. Next reward in ~${nextIn}h.` });
     }
-    // Streak: resets if more than 48h since last claim
     const streak = hoursSinceLast < 48 ? (p.dailyStreak || 0) + 1 : 1;
     const cappedStreak = Math.min(streak, 7);
     const prestige = p.prestige || 0;
@@ -284,25 +362,6 @@ async function handleApi(req, res) {
     saveDB();
     return sendJSON(res, 200, { ok: true });
   }
-  if (url === '/api/guild/donate' && method === 'POST') {
-    const me = findPlayerByToken(body.token);
-    if (!me) return sendJSON(res, 401, { error: 'Bad token.' });
-    if (!me.guild) return sendJSON(res, 400, { error: 'You are not in a guild.' });
-    const amount = Math.max(0, Math.floor(Number(body.amount) || 0));
-    if (amount < 1) return sendJSON(res, 400, { error: 'Amount must be at least $1.' });
-    // Donation is purely symbolic server-side (treasure is sum of member lifetime)
-    // We record it as bonus treasure on the guild itself
-    const key = me.guild.toLowerCase();
-    const g   = db.guilds[key];
-    if (!g) return sendJSON(res, 404, { error: 'Guild not found.' });
-    g.bonusTreasure = (g.bonusTreasure || 0) + amount;
-    const treasure = guildTreasure(g);
-    saveDB();
-    // Broadcast treasury update to guild members
-    wsBroadcastToGuild(me.guild, { type: 'guild_update', treasure });
-    return sendJSON(res, 200, { ok: true, treasure });
-  }
-
   if (url === '/api/guilds' && method === 'GET') {
     const guilds = Object.keys(db.guilds).map((k) => {
       const g = db.guilds[k];
@@ -438,6 +497,10 @@ function handleWsMessage(socket, raw) {
   }
 }
 
-server.listen(PORT, () => {
-  console.log(`Fortune Mill (text) running at http://localhost:${PORT}`);
+loadDB().then(() => {
+  server.listen(PORT, () => {
+    console.log(`Fortune Mill (text) running at http://localhost:${PORT}`);
+    console.log(`  Storage: ${USE_REDIS ? 'Upstash Redis (persistent)' : 'local data.json'}`);
+    console.log(`  Room password: ${ROOM_PASSWORD ? 'ON' : 'off'}`);
+  });
 });
