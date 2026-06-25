@@ -173,6 +173,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
   .reel-inner { font-size:36px; line-height:86px; }
   #wheelCanvas { width:300px; height:300px; }
 }
+.bosshead { text-align:center; margin:6px 0 0; }
+.bemoji { font-size:48px; line-height:1; display:inline-block; filter:drop-shadow(0 0 12px rgba(210,59,59,0.55)); }
+.boss-hp { font-size:13px; font-weight:bold; color:var(--red); text-align:center; }
 .lock-note { background:var(--panel2); border:1px dashed var(--borderhi); color:var(--gold); padding:9px 12px; font-size:12px; margin:8px 0; border-radius:4px; }
 .anim-stage { position:relative; height:96px; display:flex; align-items:center; justify-content:center; gap:16px; margin:8px 0 12px; background:radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 70%), var(--panel2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
 .pball { position:absolute; top:6px; left:50%; font-size:30px; }
@@ -258,8 +261,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
         <div class="col panel" id="dartRoomPanel">
           <h2>🪓 Axe-Throwing Pit</h2>
           <p class="muted" style="font-size:12px;">Hurl your axe at the target. Cleaves strike 10× harder. Keep your streak hot for combo fury.</p>
+          <div class="bosshead"><span class="bemoji" id="dartsBossEmoji">🧟</span></div>
           <div class="progress"><div id="dartsGoal"></div></div>
-          <p class="muted" style="font-size:11px;" id="dartsGoalText"></p>
+          <p class="boss-hp" id="dartsGoalText"></p>
           <div id="luckyBar" class="hidden"><span id="luckyBarText">🍀 LUCKY HOUR — ×2 all earnings</span></div>
           <div id="comboDisplay" class="hidden"><span class="combo-count"></span><span class="combo-mult"></span></div>
           <div class="focus-wrap">
@@ -289,8 +293,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>ᚱ Rune Carving</h2>
           <p class="muted" style="font-size:12px;">Carve a rune stone and pray to the gods. Divine blessings are rare — but mighty.</p>
           <div class="lock-note" id="scratchLock" style="display:none;">🔒 Conquer the Axe Pit (land a $1,000,000 strike) to unlock Rune Carving.</div>
+          <div class="bosshead"><span class="bemoji" id="scratchBossEmoji">👻</span></div>
           <div class="progress"><div id="scratchGoal"></div></div>
-          <p class="muted" style="font-size:11px;" id="scratchGoalText"></p>
+          <p class="boss-hp" id="scratchGoalText"></p>
           <div class="field"><label>Ticket tier</label><select id="ticketTier"></select></div>
           <button class="big act" id="scratchBtn">CARVE A RUNE</button>
           <div class="stat"><span class="k">Win chance</span><span class="v good" id="scratchLuck">25%</span></div>
@@ -313,8 +318,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>🎰 Norn's Reels</h2>
           <p class="muted" style="font-size:12px;">Spin the reels of fate. Match three for a payout — 💎💎💎 is the gods' jackpot.</p>
           <div class="lock-note" id="slotsLock" style="display:none;">🔒 Conquer Rune Carving to unlock the Norn's Reels.</div>
+          <div class="bosshead"><span class="bemoji" id="slotsBossEmoji">🐲</span></div>
           <div class="progress"><div id="slotsGoal"></div></div>
-          <p class="muted" style="font-size:11px;" id="slotsGoalText"></p>
+          <p class="boss-hp" id="slotsGoalText"></p>
           <div class="reels">
             <div class="reel"><div class="reel-inner" id="reel0">🍒</div><div class="reel-shine"></div></div>
             <div class="reel"><div class="reel-inner" id="reel1">🍋</div><div class="reel-shine"></div></div>
@@ -346,8 +352,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>🪨 Boulder Drop</h2>
           <p class="muted" style="font-size:12px;">Drop a boulder down the cliff into a multiplier rune. Jackpot Pins unlock the 25× rune.</p>
           <div class="lock-note" id="pachinkoLock" style="display:none;">🔒 Conquer the Norn's Reels to unlock the Boulder Drop.</div>
+          <div class="bosshead"><span class="bemoji" id="pachinkoBossEmoji">🗿</span></div>
           <div class="progress"><div id="pachinkoGoal"></div></div>
-          <p class="muted" style="font-size:11px;" id="pachinkoGoalText"></p>
+          <p class="boss-hp" id="pachinkoGoalText"></p>
           <div class="anim-stage pachinko-stage"><div class="pball" id="pachinkoBall">🪨</div><div class="pachinko-result" id="pachinkoResult"></div></div>
           <button class="big act" id="dropBtn">DROP BOULDER (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="pachinkoValue">$1</span></div>
@@ -369,8 +376,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>🍖 Feast Hall</h2>
           <p class="muted" style="font-size:12px;">Serve the longhouse. Match the dishes for a roaring feast — a perfect spread pays 15×.</p>
           <div class="lock-note" id="sushiLock" style="display:none;">🔒 Conquer the Boulder Drop to unlock the Feast Hall.</div>
+          <div class="bosshead"><span class="bemoji" id="sushiBossEmoji">👹</span></div>
           <div class="progress"><div id="sushiGoal"></div></div>
-          <p class="muted" style="font-size:11px;" id="sushiGoalText"></p>
+          <p class="boss-hp" id="sushiGoalText"></p>
           <div class="anim-stage sushi-stage" id="sushiStage"><span class="splate" id="sushiP0">🍖</span><span class="splate" id="sushiP1">🍺</span><span class="splate" id="sushiP2">🐟</span></div>
           <button class="big act" id="cookBtn">SERVE FEAST (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="sushiValue">$1</span></div>
@@ -392,8 +400,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>🐺 Beast Summon</h2>
           <p class="muted" style="font-size:12px;">Summon beasts of legend: Wolf → Raven → Bear → Dragon (150×).</p>
           <div class="lock-note" id="gachaLock" style="display:none;">🔒 Conquer the Feast Hall to unlock Beast Summon.</div>
+          <div class="bosshead"><span class="bemoji" id="gachaBossEmoji">💀</span></div>
           <div class="progress"><div id="gachaGoal"></div></div>
-          <p class="muted" style="font-size:11px;" id="gachaGoalText"></p>
+          <p class="boss-hp" id="gachaGoalText"></p>
           <div class="anim-stage gacha-stage"><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
           <button class="big act" id="pullBtn">SUMMON BEAST (space)</button>
           <div class="stat"><span class="k">Base pull value</span><span class="v gold" id="gachaValue">$1</span></div>

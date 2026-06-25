@@ -10,14 +10,14 @@
   const ALL_ROOMS = ['darts', 'scratch', 'slots', 'pachinko', 'sushi', 'gacha'];
   const ROOM_LABEL = { darts:'Axe', scratch:'Rune', slots:'Reel', pachinko:'Boulder', sushi:'Feast', gacha:'Beast' };
   const BOSS = {
-    darts:   { name:'Draugr Raider',   emoji:'🧟', hp: 25000 },
-    scratch: { name:'Rune Wraith',     emoji:'👻', hp: 150000 },
-    slots:   { name:'Fafnir the Wyrm', emoji:'🐲', hp: 800000 },
-    pachinko:{ name:'Stone Jötunn',    emoji:'🗿', hp: 4000000 },
-    sushi:   { name:'Glutton Troll',   emoji:'👹', hp: 18000000 },
-    gacha:   { name:'Warden of Hel',   emoji:'💀', hp: 75000000 },
+    darts:   { name:'Draugr Raider',   emoji:'🧟', hp: 120000 },
+    scratch: { name:'Rune Wraith',     emoji:'👻', hp: 900000 },
+    slots:   { name:'Fafnir the Wyrm', emoji:'🐲', hp: 7000000 },
+    pachinko:{ name:'Stone Jötunn',    emoji:'🗿', hp: 45000000 },
+    sushi:   { name:'Glutton Troll',   emoji:'👹', hp: 280000000 },
+    gacha:   { name:'Warden of Hel',   emoji:'💀', hp: 1800000000 },
   };
-  const FINAL_BOSS = { name:'Jörmungandr', emoji:'🐉', hp: 400000000 };
+  const FINAL_BOSS = { name:'Jörmungandr', emoji:'🐉', hp: 25000000000 };
   const MASTERY_BASE = { darts:50000, scratch:300000, slots:2000000, pachinko:10000000, sushi:50000000, gacha:200000000 };
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@
     challengeProgress: {},
     todayEarned: 0, todayDate: '',
     throwCount: 0,
-    finalBossHp: 400000000, finalBossDefeated: false,
+    finalBossHp: 25000000000, finalBossDefeated: false,
   };
   ALL_ROOMS.forEach(r => { state[r].bossHp = BOSS[r].hp; });
 
@@ -97,11 +97,11 @@
   ];
 
   const TICKETS = [
-    { name:'Penny',   cost:5,      maxWin:25      },
-    { name:'Silver',  cost:50,     maxWin:300     },
-    { name:'Gold',    cost:500,    maxWin:4000    },
-    { name:'Diamond', cost:5000,   maxWin:60000   },
-    { name:'Mythic',  cost:50000,  maxWin:900000  },
+    { name:'ᚠ Fehu',   cost:5,      maxWin:25      },
+    { name:'ᚢ Uruz',   cost:50,     maxWin:300     },
+    { name:'ᚦ Thurs',  cost:500,    maxWin:4000    },
+    { name:'ᚨ Ansuz',  cost:5000,   maxWin:60000   },
+    { name:'ᚱ Raido',  cost:50000,  maxWin:900000  },
   ];
 
   const SLOT_SYMBOLS  = ['🍒','🍋','🍇','⭐','🎯','💰','💎'];
@@ -275,6 +275,7 @@
       Dopamine.addXP(boosted);
       Dopamine.checkMilestones(state.lifetime);
     }
+    return boosted;
   }
 
   // ── Room clear check ───────────────────────────────────────────────────────
@@ -286,6 +287,7 @@
   }
   function checkClear(room, goalId, textId) {
     const b = BOSS[room]; const max = b.hp;
+    const _em = $(room + 'BossEmoji'); if (_em) { _em.textContent = b.emoji; _em.style.opacity = state[room].cleared ? '0.35' : '1'; }
     if (state[room].cleared) state[room].bossHp = 0;
     if (state[room].bossHp == null) state[room].bossHp = max;
     const hp = Math.max(0, state[room].bossHp);
@@ -391,9 +393,9 @@
     const accuracy = 0.4 + Math.random() * 0.6;
     let payout     = dartValue() * accuracy * (crit ? 10 : 1);
     payout         = Math.max(1, payout);
-    earn(payout);
+    const got = earn(payout);
 
-    state.darts.best    = Math.max(state.darts.best, payout);
+    state.darts.best    = Math.max(state.darts.best, got);
     state.crits         = (state.crits || 0) + (crit ? 1 : 0);
     state.throwCount    = (state.throwCount || 0) + 1;
 
@@ -403,11 +405,11 @@
 
     if (typeof Dopamine !== 'undefined') { Dopamine.onThrow(); Dopamine.checkAchievements(); }
 
-    logTo('dartsLog', `🪓 ${crit?'CLEAVE! ':''}Struck ${money(payout)} (${Math.round(accuracy*100)}% aim)`, crit?'good':'');
+    logTo('dartsLog', `🪓 ${crit?'CLEAVE! ':''}Axe struck for ${money(got)} (${Math.round(accuracy*100)}% aim)`, crit?'good':'');
     if (typeof Anim !== 'undefined') { try { Anim.throwDart(accuracy, crit); } catch {} }
-    AnimFloat('+'+money(payout), $('throwBtn'), crit?'#ffd166':'#00e87a');
+    AnimFloat('+'+money(got), $('throwBtn'), crit?'#ffd166':'#00e87a');
     SFX('sfxDart', crit);
-    damageBoss('darts', payout);
+    damageBoss('darts', got);
     refreshTop();
     checkClear('darts','dartsGoal','dartsGoalText');
   }
@@ -417,7 +419,7 @@
     if (!roomUnlocked('scratch')) { toast('🔒 Clear the ' + prevRoomLabel('scratch') + ' room first.'); return; }
     const tierIdx  = parseInt($('ticketTier').value,10) || 0;
     const t        = TICKETS[tierIdx];
-    if (state.gold < t.cost) { toast(`Need ${money(t.cost)} for a ${t.name} ticket.`); return; }
+    if (state.gold < t.cost) { toast(`Need ${money(t.cost)} for a ${t.name} stone.`); return; }
     state.gold -= t.cost;
 
     const won    = Math.random() < (0.25 + scratchLuck());
@@ -426,18 +428,18 @@
       let   win     = t.maxWin * (0.2 + Math.random() * 0.8);
       if (jackpot)  win = t.maxWin * jackpotMult();
       win = Math.max(t.cost, Math.floor(win));
-      earn(win);
-      state.scratch.best = Math.max(state.scratch.best, win);
-      damageBoss('scratch', win);
+      const got = earn(win);
+      state.scratch.best = Math.max(state.scratch.best, got);
+      damageBoss('scratch', got);
       state.scratchWins  = (state.scratchWins||0) + 1;
       if (jackpot) { state.jackpots = (state.jackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('scratchWins',1);
-      logTo('scratchLog', `ᚱ ${jackpot?'⚡ DIVINE BLESSING! ':''}${t.name} rune blessed ${money(win)}`, jackpot?'good':'');
+      logTo('scratchLog', `${t.name} ${jackpot?'⚡ DIVINE BLESSING! ':'rune blessed '}${money(got)}`, jackpot?'good':'');
       if (typeof Anim !== 'undefined') { try { Anim.revealScratch(true, jackpot); } catch {} }
-      AnimFloat('+'+money(win), $('scratchBtn'), jackpot?'#ffd166':'#00e87a');
+      AnimFloat('+'+money(got), $('scratchBtn'), jackpot?'#ffd166':'#00e87a');
       SFX('sfxWin', jackpot);
     } else {
-      logTo('scratchLog', `ᚱ ${t.name} rune fell silent. (-${money(t.cost)})`, 'muted');
+      logTo('scratchLog', `${t.name} rune fell silent. (-${money(t.cost)})`, 'muted');
       if (typeof Anim !== 'undefined') { try { Anim.revealScratch(false, false); } catch {} }
       SFX('sfxLoss');
     }
@@ -476,31 +478,31 @@
     const three  = r0===r1 && r1===r2;
     const two    = !three && (r0===r1 || r1===r2 || r0===r2);
     const jackpot = three && r0==='💎';
-    let win = 0, logTxt = '', logCls = '';
+    let win = 0, got = 0, logTxt = '', logCls = '';
 
     if (three) {
       const mult = SLOT_PAY3[r0] * slotMult() * (jackpot ? slotJackpotMult() : 1);
       win = Math.floor(bet.cost * mult);
-      earn(win);
+      got = earn(win);
       state.slotWins     = (state.slotWins||0)+1;
       if (jackpot) { state.slotJackpots=(state.slotJackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('slotWins',1);
-      state.slots.best = Math.max(state.slots.best||0, win);
-      damageBoss('slots', win);
-      logTxt = `${res.join('')} — ${jackpot?'💎 JACKPOT! ':'3 OF A KIND! '}+${money(win)}`;
+      state.slots.best = Math.max(state.slots.best||0, got);
+      damageBoss('slots', got);
+      logTxt = `${res.join('')} — ${jackpot?'💎 JACKPOT! ':'3 OF A KIND! '}+${money(got)}`;
       logCls = jackpot ? 'good' : '';
-      AnimFloat('+'+money(win), $('slotBtn'), jackpot?'#ffc820':'#00e87a');
+      AnimFloat('+'+money(got), $('slotBtn'), jackpot?'#ffc820':'#00e87a');
       if (jackpot) { SFX('sfxWin', true); if(typeof Dopamine!=='undefined') Dopamine.shake('heavy'); }
       else         { SFX('sfxWin', false);if(typeof Dopamine!=='undefined') Dopamine.shake('light'); }
     } else if (two) {
       win = Math.floor(bet.cost * 1.5);
-      earn(win);
+      got = earn(win);
       updateChallengeProgress('slotWins',1);
       state.slotWins = (state.slotWins||0)+1;
-      state.slots.best = Math.max(state.slots.best||0, win);
-      damageBoss('slots', win);
-      logTxt = `${res.join('')} — Pair! +${money(win)}`;
-      AnimFloat('+'+money(win), $('slotBtn'), '#33aaff');
+      state.slots.best = Math.max(state.slots.best||0, got);
+      damageBoss('slots', got);
+      logTxt = `${res.join('')} — Pair! +${money(got)}`;
+      AnimFloat('+'+money(got), $('slotBtn'), '#33aaff');
     } else {
       logTxt = `${res.join('')} — No match. -${money(bet.cost)}`;
       logCls = 'bad';
@@ -586,13 +588,13 @@
     const slot = jackpot ? 25 : [0.3,0.5,1,1,2,3,5][Math.floor(Math.random()*7)];
     animPachinko(slot, jackpot);
     const payout = Math.max(1, pachinkoValue() * slot);
-    earn(payout);
-    state.pachinko.best = Math.max(state.pachinko.best, payout);
-    damageBoss('pachinko', payout);
+    const got = earn(payout);
+    state.pachinko.best = Math.max(state.pachinko.best, got);
+    damageBoss('pachinko', got);
     if (jackpot) updateChallengeProgress('jackpots', 1);
     addFocus(6);
-    logTo('pachinkoLog', `🪨 ${jackpot?'💥 25× RUNE STRIKE! ':''}Boulder hit ${slot}× → ${money(payout)}`, jackpot?'good':'');
-    AnimFloat('+'+money(payout), $('dropBtn'), jackpot?'#ffc820':'#00e87a');
+    logTo('pachinkoLog', `🪨 ${jackpot?'💥 25× RUNE STRIKE! ':''}Boulder hit ${slot}× → ${money(got)}`, jackpot?'good':'');
+    AnimFloat('+'+money(got), $('dropBtn'), jackpot?'#ffc820':'#00e87a');
     SFX(jackpot ? 'sfxWin' : 'sfxDart', jackpot);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     refreshTop();
@@ -607,12 +609,12 @@
     animSushi(won, perfect);
     if (won) {
       const payout = Math.max(1, perfect ? sushiValue()*15 : sushiValue()*(1 + Math.random()*2));
-      earn(payout);
-      state.sushi.best = Math.max(state.sushi.best, payout);
-      damageBoss('sushi', payout);
+      const got = earn(payout);
+      state.sushi.best = Math.max(state.sushi.best, got);
+      damageBoss('sushi', got);
       if (perfect) updateChallengeProgress('jackpots', 1);
-      logTo('sushiLog', `🍖 ${perfect?'🌟 PERFECT FEAST! ':'Feast! '}${money(payout)}`, perfect?'good':'');
-      AnimFloat('+'+money(payout), $('cookBtn'), perfect?'#ffc820':'#00e87a');
+      logTo('sushiLog', `🍖 ${perfect?'🌟 PERFECT FEAST! ':'Feast! '}${money(got)}`, perfect?'good':'');
+      AnimFloat('+'+money(got), $('cookBtn'), perfect?'#ffc820':'#00e87a');
       SFX('sfxWin', perfect);
     } else {
       logTo('sushiLog', `🍖 The hall goes hungry…`, 'muted');
@@ -636,13 +638,13 @@
     else rarity = GACHA_RARITIES[0];
     animGacha(rarity.name);
     const payout = Math.max(1, gachaValue() * rarity.mult * (1 + Math.random()));
-    earn(payout);
-    state.gacha.best = Math.max(state.gacha.best, payout);
-    damageBoss('gacha', payout);
+    const got = earn(payout);
+    state.gacha.best = Math.max(state.gacha.best, got);
+    damageBoss('gacha', got);
     if (rarity.mult >= 150) updateChallengeProgress('jackpots', 1);
     addFocus(6);
-    logTo('gachaLog', `🐺 Summoned a ${rarity.name}! +${money(payout)}`, rarity.cls);
-    AnimFloat('+'+money(payout), $('pullBtn'), rarity.mult>=30?'#ffc820':'#00e87a');
+    logTo('gachaLog', `🐺 Summoned a ${rarity.name}! +${money(got)}`, rarity.cls);
+    AnimFloat('+'+money(got), $('pullBtn'), rarity.mult>=30?'#ffc820':'#00e87a');
     SFX('sfxWin', rarity.mult>=30);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     refreshTop();
@@ -942,32 +944,32 @@
 
     const a = dartAuto();
     if (a > 0) {
-      earn(a * dartValue() * (1 + dartCrit()*9) * dt);
+      const g = earn(a * dartValue() * (1 + dartCrit()*9) * dt);
       state.darts.best = Math.max(state.darts.best, dartValue() * (1+dartCrit()*9));
-      damageBoss('darts', a * dartValue() * (1 + dartCrit()*9) * dt);
+      damageBoss('darts', g);
     }
     const s = scratchAuto();
     if (s > 0) {
       const t  = TICKETS[unlockedTiers()-1];
       const per = t.maxWin * (0.25+scratchLuck()) * 0.5 * jackpotMult();
-      earn(s * per * dt);
+      const g = earn(s * per * dt);
       state.scratch.best = Math.max(state.scratch.best, per);
-      damageBoss('scratch', s * per * dt);
+      damageBoss('scratch', g);
     }
     const sa = slotAuto();
     if (sa > 0) {
       const sb  = SLOT_BETS[Math.max(0, unlockedBets()-1)];
       const per = sb.cost * 0.64 * slotMult() * (1+slotLuck());
-      earn(sa * per * dt);
+      const g = earn(sa * per * dt);
       state.slots.best = Math.max(state.slots.best, per);
-      damageBoss('slots', sa * per * dt);
+      damageBoss('slots', g);
     }
     const pa = pachinkoAuto();
-    if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); earn(pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); damageBoss('pachinko', pa*per*dt); }
+    if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); const g = earn(pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); damageBoss('pachinko', g); }
     const su = sushiAuto();
-    if (su > 0) { const per = sushiValue()*((0.35+sushiLuck())*2); earn(su*per*dt); state.sushi.best = Math.max(state.sushi.best, per); damageBoss('sushi', su*per*dt); }
+    if (su > 0) { const per = sushiValue()*((0.35+sushiLuck())*2); const g = earn(su*per*dt); state.sushi.best = Math.max(state.sushi.best, per); damageBoss('sushi', g); }
     const ga = gachaAuto();
-    if (ga > 0) { const per = gachaValue()*(1.5+gachaLuck()*30); earn(ga*per*dt); state.gacha.best = Math.max(state.gacha.best, per); damageBoss('gacha', ga*per*dt); }
+    if (ga > 0) { const per = gachaValue()*(1.5+gachaLuck()*30); const g = earn(ga*per*dt); state.gacha.best = Math.max(state.gacha.best, per); damageBoss('gacha', g); }
 
     if (a>0 || s>0 || sa>0 || pa>0 || su>0 || ga>0) { refreshTop(); checkAllClears(); }
     if (ALL_ROOMS.every(r => state[r].cleared) && !state.finalBossDefeated) {
