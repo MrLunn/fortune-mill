@@ -438,19 +438,18 @@
       win = Math.max(t.cost, Math.floor(win));
       animRunes(true, jackpot);
       const got = earnTo('scratch', win);
+      if (false) {}
       state.scratch.best = Math.max(state.scratch.best, got);
       damageBoss('scratch', got);
       state.scratchWins  = (state.scratchWins||0) + 1;
       if (jackpot) { state.jackpots = (state.jackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('scratchWins',1);
       logTo('scratchLog', `${t.name} ${jackpot?'⚡ DIVINE BLESSING! ':'rune blessed '}${money(got)}`, jackpot?'good':'');
-      if (typeof Anim !== 'undefined') { try { Anim.revealScratch(true, jackpot); } catch {} }
       AnimFloat('+'+money(got), $('scratchBtn'), jackpot?'#ffd166':'#00e87a');
       SFX('sfxWin', jackpot);
     } else {
       animRunes(false, false);
       logTo('scratchLog', `${t.name} rune fell silent. (-${money(t.cost)})`, 'muted');
-      if (typeof Anim !== 'undefined') { try { Anim.revealScratch(false, false); } catch {} }
       SFX('sfxLoss');
     }
 
@@ -502,6 +501,7 @@
       logTxt = `${res.join('')} — ${jackpot?'💎 JACKPOT! ':'3 OF A KIND! '}+${money(got)}`;
       logCls = jackpot ? 'good' : '';
       AnimFloat('+'+money(got), $('slotBtn'), jackpot?'#ffc820':'#00e87a');
+      fxBurst('slotBtn', jackpot?'#ffc820':'#00e87a', jackpot?24:12); if (jackpot) screenFlash();
       if (jackpot) { SFX('sfxWin', true); if(typeof Dopamine!=='undefined') Dopamine.shake('heavy'); }
       else         { SFX('sfxWin', false);if(typeof Dopamine!=='undefined') Dopamine.shake('light'); }
     } else if (two) {
@@ -574,12 +574,39 @@
   const RUNES = ['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛏ','ᛒ','ᛖ','ᛗ','ᛚ','ᛞ','ᛟ'];
   function animRunes(won, jackpot) {
     const sym = RUNES[Math.floor(Math.random()*RUNES.length)];
-    ['runeS0','runeS1','runeS2'].forEach((id,i) => { const e=$(id); if(!e)return; e.style.animation='none'; void e.offsetWidth; e.textContent = won ? sym : RUNES[(i*5+3)%RUNES.length]; e.style.animation='sflip 0.4s ease'; });
+    ['runeS0','runeS1','runeS2'].forEach((id,i) => { const e=$(id); if(!e)return; e.style.animation='none'; void e.offsetWidth; e.textContent = won ? sym : RUNES[(i*5+3)%RUNES.length]; e.style.animation='sflip 0.4s ease'; const st=e.parentElement; if(st&&st.classList){ st.classList.toggle('lit', !!won); } });
     const stage=$('runeStage'); if(stage){ stage.classList.toggle('match', !!won); stage.classList.toggle('perfect', !!jackpot); }
+    if (won) { fxBurst('scratchBtn', jackpot?'#ffd166':'#a877e0', jackpot?22:12); if (jackpot) screenFlash('radial-gradient(circle, rgba(168,119,224,0.22), transparent 70%)'); }
+  }
+  function fxBurst(elId, color, n) {
+    try {
+      const el = $(elId); if (!el || !el.getBoundingClientRect) return;
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (let i = 0; i < (n || 14); i++) {
+        const p = document.createElement('div'); p.className = 'spark';
+        const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 80;
+        p.style.left = cx + 'px'; p.style.top = cy + 'px';
+        p.style.setProperty('--dx', Math.cos(a) * d + 'px');
+        p.style.setProperty('--dy', Math.sin(a) * d - 20 + 'px');
+        p.style.color = color || '#ffc820';
+        document.body.appendChild(p);
+        setTimeout(() => { try { p.remove(); } catch {} }, 760);
+      }
+    } catch {}
+  }
+  function screenFlash(color) {
+    try {
+      const f = document.createElement('div'); f.className = 'screenflash';
+      f.style.background = color || 'radial-gradient(circle, rgba(255,200,32,0.18), transparent 70%)';
+      document.body.appendChild(f);
+      setTimeout(() => { try { f.remove(); } catch {} }, 340);
+    } catch {}
   }
   function animAxe(crit) {
     const axe = $('axeProj'); if (axe) { axe.style.animation='none'; void axe.offsetWidth; axe.style.animation = (crit?'axefly 0.4s ease, axecrit 0.4s ease':'axefly 0.45s ease'); }
-    const tgt = $('axeTarget'); if (tgt && crit) { tgt.style.animation='none'; void tgt.offsetWidth; tgt.style.animation='axehit 0.3s ease'; }
+    const tgt = $('axeTarget'); if (tgt) { tgt.classList.remove('hit'); void tgt.offsetWidth; tgt.classList.add('hit'); }
+    if (crit) { fxBurst('throwBtn', '#ffd166', 18); screenFlash(); }
   }
   function animPachinko(slot, jackpot) {
     const ball = $('pachinkoBall');
@@ -629,6 +656,7 @@
     addFocus(6);
     logTo('pachinkoLog', `🪨 ${jackpot?'💥 25× RUNE STRIKE! ':''}Boulder hit ${slot}× → ${money(got)}`, jackpot?'good':'');
     AnimFloat('+'+money(got), $('dropBtn'), jackpot?'#ffc820':'#00e87a');
+    if (jackpot) { fxBurst('dropBtn', '#ffc820', 22); screenFlash(); }
     SFX(jackpot ? 'sfxWin' : 'sfxDart', jackpot);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     refreshTop();
@@ -649,6 +677,7 @@
       if (perfect) updateChallengeProgress('jackpots', 1);
       logTo('sushiLog', `🍖 ${perfect?'🌟 PERFECT FEAST! ':'Feast! '}${money(got)}`, perfect?'good':'');
       AnimFloat('+'+money(got), $('cookBtn'), perfect?'#ffc820':'#00e87a');
+      if (perfect) { fxBurst('cookBtn', '#ffc820', 22); screenFlash(); }
       SFX('sfxWin', perfect);
     } else {
       logTo('sushiLog', `🍖 The hall goes hungry…`, 'muted');
@@ -679,6 +708,7 @@
     addFocus(6);
     logTo('gachaLog', `🐺 Summoned a ${rarity.name}! +${money(got)}`, rarity.cls);
     AnimFloat('+'+money(got), $('pullBtn'), rarity.mult>=30?'#ffc820':'#00e87a');
+    if (rarity.mult>=30) { fxBurst('pullBtn', rarity.mult>=150?'#ffc820':'#a877e0', rarity.mult>=150?26:16); if (rarity.mult>=150) screenFlash(); }
     SFX('sfxWin', rarity.mult>=30);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     refreshTop();
@@ -1330,7 +1360,7 @@
     setInterval(updateDailyBtn, 60000);
 
     if (typeof Anim !== 'undefined') {
-      try { Anim.init(); Anim.initScratchCard('scratchRoomPanel'); } catch {}
+      try { Anim.init(); } catch {}
     }
     if (typeof Music !== 'undefined') { try { Music.start(); } catch {} }
 

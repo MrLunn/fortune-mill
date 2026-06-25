@@ -176,6 +176,37 @@ tr:hover td { background:rgba(255,255,255,0.01); }
 .bosshead { text-align:center; margin:6px 0 0; }
 .bemoji { font-size:48px; line-height:1; display:inline-block; filter:drop-shadow(0 0 12px rgba(210,59,59,0.55)); }
 .boss-hp { font-size:13px; font-weight:bold; color:var(--red); text-align:center; }
+/* ── 3D depth scenes ───────────────────────────────────────────── */
+.anim-stage { perspective: 720px; transform-style: preserve-3d; height:108px;
+  background: radial-gradient(ellipse at 50% 130%, rgba(255,255,255,0.06), transparent 62%), linear-gradient(180deg, #0e0a06, #050302);
+  box-shadow: inset 0 16px 34px rgba(0,0,0,0.6), inset 0 -6px 16px rgba(255,255,255,0.03); border-color: var(--borderhi); }
+.axe-stage { gap:0; justify-content:space-around; }
+.target3d { position:relative; width:86px; height:86px; transform: rotateX(30deg); transform-style:preserve-3d; }
+.target3d .tring { position:absolute; border-radius:50%; left:50%; top:50%; transform:translate(-50%,-50%); }
+.target3d .r1 { width:86px; height:86px; background:radial-gradient(circle at 40% 30%, #d9b87a, #b08a4c); box-shadow:0 10px 16px rgba(0,0,0,0.65); }
+.target3d .r2 { width:58px; height:58px; background:radial-gradient(circle at 40% 30%, #a83232, #6e1c1c); }
+.target3d .r3 { width:32px; height:32px; background:radial-gradient(circle at 40% 30%, #d9b87a, #b08a4c); }
+.target3d .tbull { position:absolute; left:50%; top:50%; width:13px; height:13px; border-radius:50%; transform:translate(-50%,-50%); background:#ef3b3b; box-shadow:0 0 12px #ffd166; }
+.target3d.hit { animation: thit 0.32s ease; }
+@keyframes thit { 0%,100%{transform:rotateX(30deg) scale(1)} 45%{transform:rotateX(30deg) scale(1.13)} }
+.axe { font-size:42px; display:inline-block; filter:drop-shadow(0 6px 6px rgba(0,0,0,0.5)); }
+.rune-stage { gap:16px; }
+.runestone { width:62px; height:74px; display:flex; align-items:center; justify-content:center; border-radius:9px;
+  background:linear-gradient(160deg,#3c352e,#211d18); border:1px solid #4c4138; transform:rotateX(20deg);
+  box-shadow:0 10px 16px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.05); transition:all 0.2s; }
+.rsigil { font-size:38px; color:#7a6a55; text-shadow:0 1px 2px #000; }
+.runestone.lit { border-color:var(--purple); box-shadow:0 10px 18px rgba(0,0,0,0.6), 0 0 18px rgba(168,119,224,0.55), inset 0 2px 4px rgba(255,255,255,0.06); }
+.runestone.lit .rsigil { color:#d4b8ff; text-shadow:0 0 14px var(--purple); }
+.gacha-stage { position:relative; }
+.summon-circle { position:absolute; width:92px; height:92px; border-radius:50%; border:2px dashed var(--purple); opacity:0.45; animation: spin 9s linear infinite; }
+.summon-circle.s2 { width:64px; height:64px; border-style:dotted; border-color:var(--blue); animation: spin 6s linear infinite reverse; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.gachaCapsule { position:relative; z-index:2; }
+/* particles + screen flash */
+.spark { position:fixed; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:9500; background:currentColor; box-shadow:0 0 8px currentColor; animation: sparkfly 0.74s ease-out forwards; }
+@keyframes sparkfly { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--dx),var(--dy)) scale(0.2);opacity:0} }
+.screenflash { position:fixed; inset:0; pointer-events:none; z-index:9400; animation: flashfade 0.34s ease-out forwards; }
+@keyframes flashfade { 0%{opacity:1} 100%{opacity:0} }
 /* Per-room purse */
 .roompurse { font-size:13px; color:var(--gold); text-align:center; margin:2px 0 8px; }
 .roompurse b { font-size:17px; text-shadow:0 0 10px rgba(255,200,32,0.45); }
@@ -305,7 +336,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
             <div class="focus-track"><div class="focus-fill" id="focusFill"></div></div>
           </div>
           <div id="dartboardSlot" style="text-align:center;margin:6px 0;"></div>
-          <div class="anim-stage axe-stage"><span class="axe" id="axeProj">🪓</span><span class="axe-target" id="axeTarget">🎯</span></div>
+          <div class="anim-stage axe-stage"><span class="axe" id="axeProj">🪓</span><div class="target3d" id="axeTarget"><div class="tring r1"></div><div class="tring r2"></div><div class="tring r3"></div><div class="tbull"></div></div></div>
           <button class="big act" id="throwBtn">HURL AXE (space)</button>
           <div class="stat"><span class="k">Base value</span><span class="v gold" id="dartValue">$1</span></div>
           <div class="stat"><span class="k">Auto-throwers</span><span class="v" id="dartAuto">0/s</span></div>
@@ -333,7 +364,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <p class="boss-hp" id="scratchGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="scratchCoins">$0</b></div>
           <div class="field"><label>Ticket tier</label><select id="ticketTier"></select></div>
-          <div class="anim-stage rune-stage" id="runeStage"><span class="rsigil" id="runeS0">ᚠ</span><span class="rsigil" id="runeS1">ᚦ</span><span class="rsigil" id="runeS2">ᚱ</span></div>
+          <div class="anim-stage rune-stage" id="runeStage"><div class="runestone"><span class="rsigil" id="runeS0">ᚠ</span></div><div class="runestone"><span class="rsigil" id="runeS1">ᚦ</span></div><div class="runestone"><span class="rsigil" id="runeS2">ᚱ</span></div></div>
           <button class="big act" id="scratchBtn">CARVE A RUNE</button>
           <div class="stat"><span class="k">Win chance</span><span class="v good" id="scratchLuck">25%</span></div>
           <div class="stat"><span class="k">Auto-scratchers</span><span class="v" id="scratchAuto">0/s</span></div>
@@ -444,7 +475,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <div class="progress"><div id="gachaGoal"></div></div>
           <p class="boss-hp" id="gachaGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="gachaCoins">$0</b></div>
-          <div class="anim-stage gacha-stage"><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
+          <div class="anim-stage gacha-stage"><div class="summon-circle"></div><div class="summon-circle s2"></div><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
           <button class="big act" id="pullBtn">SUMMON BEAST (space)</button>
           <div class="stat"><span class="k">Base pull value</span><span class="v gold" id="gachaValue">$1</span></div>
           <div class="stat"><span class="k">Auto-pullers</span><span class="v" id="gachaAuto">0/s</span></div>
