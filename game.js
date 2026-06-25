@@ -43,7 +43,7 @@
     throwCount: 0,
     finalBossHp: 25000000000, finalBossDefeated: false,
   };
-  ALL_ROOMS.forEach(r => { state[r].bossHp = BOSS[r].hp; });
+  ALL_ROOMS.forEach(r => { state[r].bossHp = BOSS[r].hp; state[r].coins = 0; });
 
   let auth = { username: null, token: null, prestige: 0, dailyStreak: 0, lastClaim: 0 };
   let passwordRequired = false;
@@ -255,30 +255,37 @@
   }
 
   // ── Earning ────────────────────────────────────────────────────────────────
-  function earn(amount) {
-    const comboM = typeof Dopamine !== 'undefined' ? Dopamine.getComboMult()              : 1;
-    const luckyM = typeof Dopamine !== 'undefined' && Dopamine.isLucky()                  ? 2 : 1;
-    const levelM = typeof Dopamine !== 'undefined' ? Dopamine.getLevelBonus()             : 1;
-    const achM   = typeof Dopamine !== 'undefined' ? Dopamine.getAchievementBonus()       : 1;
+  // ── Earning: each room keeps its OWN purse (coins). Rewards spread across
+  // unlocked rooms. Multipliers (prestige/mastery/combo/etc) apply to all gains.
+  function applyGain(amount) {
+    const comboM = typeof Dopamine !== 'undefined' ? Dopamine.getComboMult()        : 1;
+    const luckyM = typeof Dopamine !== 'undefined' && Dopamine.isLucky()            ? 2 : 1;
+    const levelM = typeof Dopamine !== 'undefined' ? Dopamine.getLevelBonus()       : 1;
+    const achM   = typeof Dopamine !== 'undefined' ? Dopamine.getAchievementBonus() : 1;
     const guildM = getGuildBuff()?.mult || 1;
     const focM   = 1 + focusBonus();
-
     const boosted = amount * prestigeMultiplier() * comboM * luckyM * levelM * achM * guildM * focM * masteryMult();
-    state.gold     += boosted;
     state.lifetime += boosted;
-
     const today = new Date().toDateString();
     if (state.todayDate !== today) { state.todayDate = today; state.todayEarned = 0; }
     state.todayEarned += boosted;
-
-    if (typeof Dopamine !== 'undefined') {
-      Dopamine.addXP(boosted);
-      Dopamine.checkMilestones(state.lifetime);
-    }
+    if (typeof Dopamine !== 'undefined') { Dopamine.addXP(boosted); Dopamine.checkMilestones(state.lifetime); }
     return boosted;
   }
+  function earnTo(room, amount) {
+    const b = applyGain(amount);
+    state[room].coins = (state[room].coins || 0) + b;
+    return b;
+  }
+  function earn(amount) {
+    const rooms = ALL_ROOMS.filter(roomUnlocked);
+    const share = amount / Math.max(1, rooms.length);
+    let total = 0;
+    for (const r of rooms) total += earnTo(r, share);
+    return total;
+  }
+  function totalCoins() { return ALL_ROOMS.reduce((n, r) => n + (state[r].coins || 0), 0); }
 
-  // ── Room clear check ───────────────────────────────────────────────────────
   // ── Bosses: each room is cleared by slaying its boss; earnings = damage ──────
   function damageBoss(room, dmg) {
     if (state[room].cleared) return;
@@ -306,6 +313,7 @@
       toast(`⚔ ${b.emoji} ${b.name} SLAIN! The next hall opens.`);
       SFX('sfxPrestige');
       updatePrestigeBtn(); updateRoomLocks(); updateFinalBoss();
+      const _ni = ALL_ROOMS.indexOf(room); announceUnlock(ALL_ROOMS[_ni+1] || 'ragnarok');
       if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     }
   }
@@ -330,13 +338,13 @@
       c.appendChild(d); return;
     }
     const def = masteryDef(room); const level = lvl(room, 'mastery'); const cost = costOf(def, level); const maxed = level >= def.max;
-    const row = document.createElement('div'); row.className = 'upgrade';
+    const row = document.createElement('div'); row.className = 'upgrade'; row.dataset.room = room; row.dataset.cost = cost;
     row.innerHTML = `
       <div class="info">
         <div class="uname" style="color:var(--gold);">⚜ ${def.name} <span class="pill">Lv ${level}</span></div>
         <div class="udesc">${def.desc}</div>
       </div>
-      <button class="act cost" style="border-color:var(--gold);color:var(--gold);" ${maxed || state.gold < cost ? 'disabled' : ''}>
+      <button class="act cost" style="border-color:var(--gold);color:var(--gold);" ${maxed || state[room].coins < cost ? 'disabled' : ''}>
         ${maxed ? 'MAX' : money(cost)}
       </button>`;
     row.querySelector('button').addEventListener('click', () => buyUpgrade(room, def));
@@ -393,7 +401,7 @@
     const accuracy = 0.4 + Math.random() * 0.6;
     let payout     = dartValue() * accuracy * (crit ? 10 : 1);
     payout         = Math.max(1, payout);
-    const got = earn(payout);
+    const got = earnTo('darts', payout);
 
     state.darts.best    = Math.max(state.darts.best, got);
     state.crits         = (state.crits || 0) + (crit ? 1 : 0);
@@ -406,7 +414,7 @@
     if (typeof Dopamine !== 'undefined') { Dopamine.onThrow(); Dopamine.checkAchievements(); }
 
     logTo('dartsLog', `🪓 ${crit?'CLEAVE! ':''}Axe struck for ${money(got)} (${Math.round(accuracy*100)}% aim)`, crit?'good':'');
-    if (typeof Anim !== 'undefined') { try { Anim.throwDart(accuracy, crit); } catch {} }
+    animAxe(crit);
     AnimFloat('+'+money(got), $('throwBtn'), crit?'#ffd166':'#00e87a');
     SFX('sfxDart', crit);
     damageBoss('darts', got);
@@ -419,8 +427,8 @@
     if (!roomUnlocked('scratch')) { toast('🔒 Clear the ' + prevRoomLabel('scratch') + ' room first.'); return; }
     const tierIdx  = parseInt($('ticketTier').value,10) || 0;
     const t        = TICKETS[tierIdx];
-    if (state.gold < t.cost) { toast(`Need ${money(t.cost)} for a ${t.name} stone.`); return; }
-    state.gold -= t.cost;
+    if (state.scratch.coins < t.cost) { toast(`Need ${money(t.cost)} Rune coin for a ${t.name} stone.`); return; }
+    state.scratch.coins -= t.cost;
 
     const won    = Math.random() < (0.25 + scratchLuck());
     if (won) {
@@ -428,7 +436,8 @@
       let   win     = t.maxWin * (0.2 + Math.random() * 0.8);
       if (jackpot)  win = t.maxWin * jackpotMult();
       win = Math.max(t.cost, Math.floor(win));
-      const got = earn(win);
+      animRunes(true, jackpot);
+      const got = earnTo('scratch', win);
       state.scratch.best = Math.max(state.scratch.best, got);
       damageBoss('scratch', got);
       state.scratchWins  = (state.scratchWins||0) + 1;
@@ -439,6 +448,7 @@
       AnimFloat('+'+money(got), $('scratchBtn'), jackpot?'#ffd166':'#00e87a');
       SFX('sfxWin', jackpot);
     } else {
+      animRunes(false, false);
       logTo('scratchLog', `${t.name} rune fell silent. (-${money(t.cost)})`, 'muted');
       if (typeof Anim !== 'undefined') { try { Anim.revealScratch(false, false); } catch {} }
       SFX('sfxLoss');
@@ -457,9 +467,9 @@
     if (!roomUnlocked('slots')) { toast('🔒 Clear the ' + prevRoomLabel('slots') + ' room first.'); return; }
     const betIdx = parseInt($('slotBet').value,10) || 0;
     const bet    = SLOT_BETS[Math.min(betIdx, unlockedBets()-1)];
-    if (state.gold < bet.cost) { toast(`Need ${money(bet.cost)} to spin.`); return; }
+    if (state.slots.coins < bet.cost) { toast(`Need ${money(bet.cost)} Reel coin to spin.`); return; }
 
-    state.gold -= bet.cost;
+    state.slots.coins -= bet.cost;
     _slotSpinning = true;
     $('slotBtn').disabled = true;
 
@@ -483,7 +493,7 @@
     if (three) {
       const mult = SLOT_PAY3[r0] * slotMult() * (jackpot ? slotJackpotMult() : 1);
       win = Math.floor(bet.cost * mult);
-      got = earn(win);
+      got = earnTo('slots', win);
       state.slotWins     = (state.slotWins||0)+1;
       if (jackpot) { state.slotJackpots=(state.slotJackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('slotWins',1);
@@ -496,7 +506,7 @@
       else         { SFX('sfxWin', false);if(typeof Dopamine!=='undefined') Dopamine.shake('light'); }
     } else if (two) {
       win = Math.floor(bet.cost * 1.5);
-      got = earn(win);
+      got = earnTo('slots', win);
       updateChallengeProgress('slotWins',1);
       state.slotWins = (state.slotWins||0)+1;
       state.slots.best = Math.max(state.slots.best||0, got);
@@ -544,9 +554,33 @@
     });
   }
 
+  const ROOM_TITLE = { darts:'Axe-Throwing Pit', scratch:'Rune Carving', slots:"Norn's Reels", pachinko:'Boulder Drop', sushi:'Feast Hall', gacha:'Beast Summon', ragnarok:'Ragnarök' };
+  function announceUnlock(room) {
+    const title = ROOM_TITLE[room] || room;
+    const b = $('unlockBanner');
+    if (b) {
+      b.innerHTML = '⚔ NEW HALL UNLOCKED<br><span style="color:var(--gold);font-size:28px;">' + title + '</span>';
+      b.classList.remove('hidden'); void b.offsetWidth; b.classList.add('show');
+      setTimeout(() => { b.classList.remove('show'); b.classList.add('hidden'); }, 3400);
+    }
+    const tab = qs('nav.tabs button[data-tab="' + room + '"]');
+    if (tab) { tab.classList.add('justunlocked'); setTimeout(() => tab.classList.remove('justunlocked'), 7000); }
+    SFX('sfxPrestige');
+  }
+
   // ── Animation helpers for the newer rooms (self-contained CSS toggles) ───────
   const SUSHI_EMOJI = ['🍖','🍺','🐟','🍗','🧀','🥩'];
   const GACHA_PETS  = { Wolf:'🐺', Raven:'🦅', Bear:'🐻', Dragon:'🐉' };
+  const RUNES = ['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛏ','ᛒ','ᛖ','ᛗ','ᛚ','ᛞ','ᛟ'];
+  function animRunes(won, jackpot) {
+    const sym = RUNES[Math.floor(Math.random()*RUNES.length)];
+    ['runeS0','runeS1','runeS2'].forEach((id,i) => { const e=$(id); if(!e)return; e.style.animation='none'; void e.offsetWidth; e.textContent = won ? sym : RUNES[(i*5+3)%RUNES.length]; e.style.animation='sflip 0.4s ease'; });
+    const stage=$('runeStage'); if(stage){ stage.classList.toggle('match', !!won); stage.classList.toggle('perfect', !!jackpot); }
+  }
+  function animAxe(crit) {
+    const axe = $('axeProj'); if (axe) { axe.style.animation='none'; void axe.offsetWidth; axe.style.animation = (crit?'axefly 0.4s ease, axecrit 0.4s ease':'axefly 0.45s ease'); }
+    const tgt = $('axeTarget'); if (tgt && crit) { tgt.style.animation='none'; void tgt.offsetWidth; tgt.style.animation='axehit 0.3s ease'; }
+  }
   function animPachinko(slot, jackpot) {
     const ball = $('pachinkoBall');
     if (ball) {
@@ -588,7 +622,7 @@
     const slot = jackpot ? 25 : [0.3,0.5,1,1,2,3,5][Math.floor(Math.random()*7)];
     animPachinko(slot, jackpot);
     const payout = Math.max(1, pachinkoValue() * slot);
-    const got = earn(payout);
+    const got = earnTo('pachinko', payout);
     state.pachinko.best = Math.max(state.pachinko.best, got);
     damageBoss('pachinko', got);
     if (jackpot) updateChallengeProgress('jackpots', 1);
@@ -609,7 +643,7 @@
     animSushi(won, perfect);
     if (won) {
       const payout = Math.max(1, perfect ? sushiValue()*15 : sushiValue()*(1 + Math.random()*2));
-      const got = earn(payout);
+      const got = earnTo('sushi', payout);
       state.sushi.best = Math.max(state.sushi.best, got);
       damageBoss('sushi', got);
       if (perfect) updateChallengeProgress('jackpots', 1);
@@ -638,7 +672,7 @@
     else rarity = GACHA_RARITIES[0];
     animGacha(rarity.name);
     const payout = Math.max(1, gachaValue() * rarity.mult * (1 + Math.random()));
-    const got = earn(payout);
+    const got = earnTo('gacha', payout);
     state.gacha.best = Math.max(state.gacha.best, got);
     damageBoss('gacha', got);
     if (rarity.mult >= 150) updateChallengeProgress('jackpots', 1);
@@ -768,8 +802,8 @@
     const level = lvl(room, def.id);
     if (level >= def.max) { toast('Maxed out.'); return; }
     const cost = costOf(def, level);
-    if (state.gold < cost) { toast(`Need ${money(cost)} for ${def.name}.`); return; }
-    state.gold -= cost;
+    if (state[room].coins < cost) { toast(`Need ${money(cost)} ${ROOM_LABEL[room]} coin for ${def.name}.`); return; }
+    state[room].coins -= cost;
     state[room].upgrades[def.id] = level + 1;
     renderUpgrades();
     refreshTop();
@@ -790,14 +824,14 @@
       const maxed   = level >= def.max;
       const synergy = _synergyNote(room, def.id);
       const row     = document.createElement('div');
-      row.className = 'upgrade';
+      row.className = 'upgrade'; row.dataset.room = room; row.dataset.cost = cost;
       row.innerHTML = `
         <div class="info">
           <div class="uname">${def.name} <span class="pill">Lv ${level}</span></div>
           <div class="udesc">${def.desc}</div>
           ${synergy ? `<div class="usynergy">${synergy}</div>` : ''}
         </div>
-        <button class="act cost" ${maxed || state.gold < cost ? 'disabled' : ''}>
+        <button class="act cost" ${maxed || state[room].coins < cost ? 'disabled' : ''}>
           ${maxed ? 'MAX' : money(cost)}
         </button>`;
       row.querySelector('button').addEventListener('click', () => buyUpgrade(room, def));
@@ -824,13 +858,13 @@
         const cost  = costOf(def, level);
         const maxed = level >= def.max;
         const row   = document.createElement('div');
-        row.className = 'upgrade';
+        row.className = 'upgrade'; row.dataset.room = room; row.dataset.cost = cost;
         row.innerHTML = `
           <div class="info">
             <div class="uname" style="color:var(--purple);">${def.name} <span class="pill">Lv ${level}</span></div>
             <div class="udesc">${def.desc}</div>
           </div>
-          <button class="act cost" style="border-color:var(--purple);color:var(--purple);" ${maxed || state.gold < cost ? 'disabled' : ''}>
+          <button class="act cost" style="border-color:var(--purple);color:var(--purple);" ${maxed || state[room].coins < cost ? 'disabled' : ''}>
             ${maxed ? 'MAX' : money(cost)}
           </button>`;
         row.querySelector('button').addEventListener('click', () => buyUpgrade(room, def));
@@ -890,8 +924,9 @@
     qsa('.upgrade').forEach(row => {
       const btn = row.querySelector('button');
       if (!btn || btn.textContent.trim() === 'MAX') return;
-      const cost = parseMoney(btn.textContent.trim());
-      btn.disabled = state.gold < cost;
+      const room = row.dataset.room; if (!room) return;
+      const cost = Number(row.dataset.cost) || parseMoney(btn.textContent.trim());
+      btn.disabled = (state[room].coins || 0) < cost;
     });
   }
 
@@ -907,9 +942,10 @@
 
   // ── Top bar refresh ────────────────────────────────────────────────────────
   function refreshTop() {
-    setText('netWorth', money(state.gold));
+    setText('netWorth', money(totalCoins()));
     setText('lifetime', money(state.lifetime));
     setText('perSec',   money(perSecond()) + '/s');
+    ALL_ROOMS.forEach(_r => setText(_r + 'Coins', money(state[_r].coins || 0)));
     const c = combat();
     setText('power', Math.round(c.atk*10 + c.luck*5 + c.hp));
     setText('dartValue', money(dartValue()));
@@ -944,7 +980,7 @@
 
     const a = dartAuto();
     if (a > 0) {
-      const g = earn(a * dartValue() * (1 + dartCrit()*9) * dt);
+      const g = earnTo('darts', a * dartValue() * (1 + dartCrit()*9) * dt);
       state.darts.best = Math.max(state.darts.best, dartValue() * (1+dartCrit()*9));
       damageBoss('darts', g);
     }
@@ -952,7 +988,7 @@
     if (s > 0) {
       const t  = TICKETS[unlockedTiers()-1];
       const per = t.maxWin * (0.25+scratchLuck()) * 0.5 * jackpotMult();
-      const g = earn(s * per * dt);
+      const g = earnTo('scratch', s * per * dt);
       state.scratch.best = Math.max(state.scratch.best, per);
       damageBoss('scratch', g);
     }
@@ -960,16 +996,16 @@
     if (sa > 0) {
       const sb  = SLOT_BETS[Math.max(0, unlockedBets()-1)];
       const per = sb.cost * 0.64 * slotMult() * (1+slotLuck());
-      const g = earn(sa * per * dt);
+      const g = earnTo('slots', sa * per * dt);
       state.slots.best = Math.max(state.slots.best, per);
       damageBoss('slots', g);
     }
     const pa = pachinkoAuto();
-    if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); const g = earn(pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); damageBoss('pachinko', g); }
+    if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); const g = earnTo('pachinko', pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); damageBoss('pachinko', g); }
     const su = sushiAuto();
-    if (su > 0) { const per = sushiValue()*((0.35+sushiLuck())*2); const g = earn(su*per*dt); state.sushi.best = Math.max(state.sushi.best, per); damageBoss('sushi', g); }
+    if (su > 0) { const per = sushiValue()*((0.35+sushiLuck())*2); const g = earnTo('sushi', su*per*dt); state.sushi.best = Math.max(state.sushi.best, per); damageBoss('sushi', g); }
     const ga = gachaAuto();
-    if (ga > 0) { const per = gachaValue()*(1.5+gachaLuck()*30); const g = earn(ga*per*dt); state.gacha.best = Math.max(state.gacha.best, per); damageBoss('gacha', g); }
+    if (ga > 0) { const per = gachaValue()*(1.5+gachaLuck()*30); const g = earnTo('gacha', ga*per*dt); state.gacha.best = Math.max(state.gacha.best, per); damageBoss('gacha', g); }
 
     if (a>0 || s>0 || sa>0 || pa>0 || su>0 || ga>0) { refreshTop(); checkAllClears(); }
     if (ALL_ROOMS.every(r => state[r].cleared) && !state.finalBossDefeated) {
@@ -998,7 +1034,7 @@
   async function saveGame() {
     if (!auth.token) return;
     state.lastSaveTime = Date.now();
-    try { await api('/api/save', { token: auth.token, state, netWorth: state.gold, lifetime: state.lifetime, combat: combat() }); } catch {}
+    try { await api('/api/save', { token: auth.token, state, netWorth: totalCoins(), lifetime: state.lifetime, combat: combat() }); } catch {}
   }
 
   async function loadConfig() {
@@ -1051,7 +1087,7 @@
       const r    = await api('/api/prestige', {token:auth.token, state});
       auth.prestige = r.prestige;
       state.gold  = 0;
-      ALL_ROOMS.forEach(room => { state[room] = {cleared:false,best:0,upgrades:{},bossHp:BOSS[room].hp}; });
+      ALL_ROOMS.forEach(room => { state[room] = {cleared:false,best:0,upgrades:{},bossHp:BOSS[room].hp,coins:0}; });
       state.finalBossHp = FINAL_BOSS.hp; state.finalBossDefeated = false;
       renderUpgrades(); refreshTop(); checkAllClears(); updateFinalBoss();
       updatePrestigeBtn();
@@ -1087,11 +1123,13 @@
 
   // ── Guild treasury ─────────────────────────────────────────────────────────
   async function donateGold(fraction) {
-    const amount = Math.floor(state.gold * fraction);
-    if (amount < 1) { toast('Not enough gold to donate.'); return; }
+    const _tot = totalCoins();
+    const amount = Math.floor(_tot * fraction);
+    if (amount < 1) { toast('Not enough coin to donate.'); return; }
     try {
       const r = await api('/api/guild/donate', {token:auth.token, amount});
-      state.gold -= amount;
+      const _ratio = _tot > 0 ? amount / _tot : 0;
+      ALL_ROOMS.forEach(rm => { state[rm].coins = Math.max(0, (state[rm].coins || 0) * (1 - _ratio)); });
       auth._guildTreasure = r.treasure;
       refreshTop();
       renderGuildBuff();
@@ -1249,7 +1287,7 @@
       const s = typeof blob==='string' ? JSON.parse(blob) : blob;
       Object.assign(state, s);
       ALL_ROOMS.forEach(room => { state[room] = Object.assign({cleared:false,best:0,upgrades:{}}, s[room]); });
-      ALL_ROOMS.forEach(room => { if (state[room].bossHp == null) state[room].bossHp = state[room].cleared ? 0 : BOSS[room].hp; });
+      ALL_ROOMS.forEach(room => { if (state[room].bossHp == null) state[room].bossHp = state[room].cleared ? 0 : BOSS[room].hp; if (typeof state[room].coins !== 'number') state[room].coins = 0; });
       state.finalBossHp = (typeof s.finalBossHp === 'number') ? s.finalBossHp : FINAL_BOSS.hp;
       state.finalBossDefeated = !!s.finalBossDefeated;
       state.achievements      = s.achievements      || [];
@@ -1292,7 +1330,7 @@
     setInterval(updateDailyBtn, 60000);
 
     if (typeof Anim !== 'undefined') {
-      try { Anim.init(); Anim.initDartboard('dartRoomPanel'); Anim.initScratchCard('scratchRoomPanel'); } catch {}
+      try { Anim.init(); Anim.initScratchCard('scratchRoomPanel'); } catch {}
     }
     if (typeof Music !== 'undefined') { try { Music.start(); } catch {} }
 

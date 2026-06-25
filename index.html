@@ -176,6 +176,39 @@ tr:hover td { background:rgba(255,255,255,0.01); }
 .bosshead { text-align:center; margin:6px 0 0; }
 .bemoji { font-size:48px; line-height:1; display:inline-block; filter:drop-shadow(0 0 12px rgba(210,59,59,0.55)); }
 .boss-hp { font-size:13px; font-weight:bold; color:var(--red); text-align:center; }
+/* Per-room purse */
+.roompurse { font-size:13px; color:var(--gold); text-align:center; margin:2px 0 8px; }
+.roompurse b { font-size:17px; text-shadow:0 0 10px rgba(255,200,32,0.45); }
+/* Per-room colour themes */
+section[data-view="darts"]    .col.panel { border-top:2px solid #5aa0d8; }
+section[data-view="darts"]    .panel h2 { color:#7ab8e8; }
+section[data-view="scratch"]  .col.panel { border-top:2px solid #a877e0; }
+section[data-view="scratch"]  .panel h2 { color:#bf95ee; }
+section[data-view="slots"]    .col.panel { border-top:2px solid #f0b429; }
+section[data-view="slots"]    .panel h2 { color:#f0c75a; }
+section[data-view="pachinko"] .col.panel { border-top:2px solid #8a9a5b; }
+section[data-view="pachinko"] .panel h2 { color:#aab978; }
+section[data-view="sushi"]    .col.panel { border-top:2px solid #d2603b; }
+section[data-view="sushi"]    .panel h2 { color:#e0805b; }
+section[data-view="gacha"]    .col.panel { border-top:2px solid #46c0e8; }
+section[data-view="gacha"]    .panel h2 { color:#6fd2f0; }
+/* Rune sigils */
+.axe-stage { gap:60px; }
+.axe { font-size:42px; display:inline-block; }
+.axe-target { font-size:50px; display:inline-block; }
+@keyframes axefly { 0%{transform:translateX(-110px) rotate(0deg)} 70%{transform:translateX(0) rotate(680deg)} 100%{transform:translateX(0) rotate(720deg)} }
+@keyframes axecrit { 0%,100%{filter:none} 50%{filter:drop-shadow(0 0 10px var(--gold))} }
+@keyframes axehit { 0%,100%{transform:scale(1)} 40%{transform:scale(1.25) rotate(-8deg)} }
+.rune-stage { gap:22px; }
+.rsigil { font-size:44px; display:inline-block; color:var(--purple); text-shadow:0 0 12px rgba(168,119,224,0.5); }
+.rune-stage.match { border-color:var(--purple); box-shadow:inset 0 0 26px rgba(168,119,224,0.3); }
+.rune-stage.perfect { border-color:var(--gold); box-shadow:inset 0 0 32px rgba(255,200,32,0.4); }
+/* Unlock banner */
+#unlockBanner { position:fixed; top:42%; left:50%; transform:translate(-50%,-50%); text-align:center; font-size:20px; font-weight:bold; letter-spacing:2px; color:var(--accent); background:linear-gradient(135deg,rgba(11,20,32,0.98),rgba(7,14,24,0.98)); border:2px solid var(--accent); padding:24px 52px; z-index:10050; pointer-events:none; opacity:0; box-shadow:0 0 60px rgba(0,232,122,0.4); }
+#unlockBanner.show { animation: unlockpop 3.4s ease forwards; }
+@keyframes unlockpop { 0%{opacity:0;transform:translate(-50%,-50%) scale(0.6)} 12%{opacity:1;transform:translate(-50%,-50%) scale(1.06)} 22%{transform:translate(-50%,-50%) scale(1)} 85%{opacity:1} 100%{opacity:0} }
+nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; color:var(--bg); background:var(--gold); }
+@keyframes tabflash { 0%,100%{box-shadow:0 0 0 rgba(255,200,32,0)} 50%{box-shadow:0 0 18px rgba(255,200,32,0.85)} }
 .lock-note { background:var(--panel2); border:1px dashed var(--borderhi); color:var(--gold); padding:9px 12px; font-size:12px; margin:8px 0; border-radius:4px; }
 .anim-stage { position:relative; height:96px; display:flex; align-items:center; justify-content:center; gap:16px; margin:8px 0 12px; background:radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 70%), var(--panel2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
 .pball { position:absolute; top:6px; left:50%; font-size:30px; }
@@ -236,7 +269,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     </nav>
 
     <div class="stat-bar">
-      <div class="stat-item"><span class="slabel">Net Worth</span><span class="sval g" id="netWorth">$0</span></div>
+      <div class="stat-item"><span class="slabel">Total Coin</span><span class="sval g" id="netWorth">$0</span></div>
       <div class="stat-item"><span class="slabel">Lifetime</span><span class="sval" id="lifetime">$0</span></div>
       <div class="stat-item"><span class="slabel">Per Second</span><span class="sval a" id="perSec">$0/s</span></div>
       <div class="stat-item"><span class="slabel">Battle Might</span><span class="sval r" id="power">0</span></div>
@@ -264,6 +297,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <div class="bosshead"><span class="bemoji" id="dartsBossEmoji">🧟</span></div>
           <div class="progress"><div id="dartsGoal"></div></div>
           <p class="boss-hp" id="dartsGoalText"></p>
+          <div class="roompurse">⛀ Purse <b id="dartsCoins">$0</b></div>
           <div id="luckyBar" class="hidden"><span id="luckyBarText">🍀 LUCKY HOUR — ×2 all earnings</span></div>
           <div id="comboDisplay" class="hidden"><span class="combo-count"></span><span class="combo-mult"></span></div>
           <div class="focus-wrap">
@@ -271,6 +305,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
             <div class="focus-track"><div class="focus-fill" id="focusFill"></div></div>
           </div>
           <div id="dartboardSlot" style="text-align:center;margin:6px 0;"></div>
+          <div class="anim-stage axe-stage"><span class="axe" id="axeProj">🪓</span><span class="axe-target" id="axeTarget">🎯</span></div>
           <button class="big act" id="throwBtn">HURL AXE (space)</button>
           <div class="stat"><span class="k">Base value</span><span class="v gold" id="dartValue">$1</span></div>
           <div class="stat"><span class="k">Auto-throwers</span><span class="v" id="dartAuto">0/s</span></div>
@@ -296,7 +331,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <div class="bosshead"><span class="bemoji" id="scratchBossEmoji">👻</span></div>
           <div class="progress"><div id="scratchGoal"></div></div>
           <p class="boss-hp" id="scratchGoalText"></p>
+          <div class="roompurse">⛀ Purse <b id="scratchCoins">$0</b></div>
           <div class="field"><label>Ticket tier</label><select id="ticketTier"></select></div>
+          <div class="anim-stage rune-stage" id="runeStage"><span class="rsigil" id="runeS0">ᚠ</span><span class="rsigil" id="runeS1">ᚦ</span><span class="rsigil" id="runeS2">ᚱ</span></div>
           <button class="big act" id="scratchBtn">CARVE A RUNE</button>
           <div class="stat"><span class="k">Win chance</span><span class="v good" id="scratchLuck">25%</span></div>
           <div class="stat"><span class="k">Auto-scratchers</span><span class="v" id="scratchAuto">0/s</span></div>
@@ -321,6 +358,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <div class="bosshead"><span class="bemoji" id="slotsBossEmoji">🐲</span></div>
           <div class="progress"><div id="slotsGoal"></div></div>
           <p class="boss-hp" id="slotsGoalText"></p>
+          <div class="roompurse">⛀ Purse <b id="slotsCoins">$0</b></div>
           <div class="reels">
             <div class="reel"><div class="reel-inner" id="reel0">🍒</div><div class="reel-shine"></div></div>
             <div class="reel"><div class="reel-inner" id="reel1">🍋</div><div class="reel-shine"></div></div>
@@ -355,6 +393,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <div class="bosshead"><span class="bemoji" id="pachinkoBossEmoji">🗿</span></div>
           <div class="progress"><div id="pachinkoGoal"></div></div>
           <p class="boss-hp" id="pachinkoGoalText"></p>
+          <div class="roompurse">⛀ Purse <b id="pachinkoCoins">$0</b></div>
           <div class="anim-stage pachinko-stage"><div class="pball" id="pachinkoBall">🪨</div><div class="pachinko-result" id="pachinkoResult"></div></div>
           <button class="big act" id="dropBtn">DROP BOULDER (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="pachinkoValue">$1</span></div>
@@ -379,6 +418,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <div class="bosshead"><span class="bemoji" id="sushiBossEmoji">👹</span></div>
           <div class="progress"><div id="sushiGoal"></div></div>
           <p class="boss-hp" id="sushiGoalText"></p>
+          <div class="roompurse">⛀ Purse <b id="sushiCoins">$0</b></div>
           <div class="anim-stage sushi-stage" id="sushiStage"><span class="splate" id="sushiP0">🍖</span><span class="splate" id="sushiP1">🍺</span><span class="splate" id="sushiP2">🐟</span></div>
           <button class="big act" id="cookBtn">SERVE FEAST (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="sushiValue">$1</span></div>
@@ -403,6 +443,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <div class="bosshead"><span class="bemoji" id="gachaBossEmoji">💀</span></div>
           <div class="progress"><div id="gachaGoal"></div></div>
           <p class="boss-hp" id="gachaGoalText"></p>
+          <div class="roompurse">⛀ Purse <b id="gachaCoins">$0</b></div>
           <div class="anim-stage gacha-stage"><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
           <button class="big act" id="pullBtn">SUMMON BEAST (space)</button>
           <div class="stat"><span class="k">Base pull value</span><span class="v gold" id="gachaValue">$1</span></div>
@@ -532,6 +573,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
 <div id="toast" class="toast hidden"></div>
 <div id="achStack"></div>
 <div id="milestoneBanner" class="hidden"></div>
+<div id="unlockBanner" class="hidden"></div>
 
 <div id="wheelModal" class="hidden">
   <div class="mbox">
