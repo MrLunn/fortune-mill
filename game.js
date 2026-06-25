@@ -234,10 +234,11 @@
   }
 
   function combat() {
+    const pm = prestigeMultiplier();
     return {
-      atk:  Math.max(1, Math.round(dartValue() + 0.5*pachinkoValue() + 0.4*sushiValue())),
-      luck: Math.round(dartCrit()*100 + scratchLuck()*50 + pachinkoLuck()*60 + sushiLuck()*50 + gachaLuck()*60),
-      hp:   Math.max(100, Math.round(100 + Math.sqrt(state.lifetime) + 20*clearedCount())),
+      atk:  Math.max(1, Math.round((dartValue() + 0.5*pachinkoValue() + 0.4*sushiValue()) * pm)),
+      luck: Math.round(dartCrit()*100 + scratchLuck()*50 + pachinkoLuck()*60 + sushiLuck()*50 + gachaLuck()*60) + auth.prestige*4,
+      hp:   Math.max(100, Math.round((100 + Math.sqrt(state.lifetime) + 20*clearedCount()) * pm + auth.prestige*150)),
     };
   }
 
@@ -274,8 +275,9 @@
       : `Best payout: ${money(best)} / ${money(ROOM_GOAL)} to clear`;
     if (!state[room]?.cleared && best >= ROOM_GOAL) {
       state[room].cleared = true;
-      toast(`🎉 ${ROOM_LABEL[room]||room} room CLEARED! Synergy bonus unlocked.`);
+      toast(`🎉 ${ROOM_LABEL[room]||room} room CLEARED! Next room unlocked.`);
       updatePrestigeBtn();
+      updateRoomLocks();
       if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     }
   }
@@ -327,6 +329,7 @@
 
   // ── Scratch actions ────────────────────────────────────────────────────────
   function scratchTicket() {
+    if (!roomUnlocked('scratch')) { toast('🔒 Clear the ' + prevRoomLabel('scratch') + ' room first.'); return; }
     const tierIdx  = parseInt($('ticketTier').value,10) || 0;
     const t        = TICKETS[tierIdx];
     if (state.gold < t.cost) { toast(`Need ${money(t.cost)} for a ${t.name} ticket.`); return; }
@@ -363,6 +366,7 @@
 
   function spinSlots() {
     if (_slotSpinning) return;
+    if (!roomUnlocked('slots')) { toast('🔒 Clear the ' + prevRoomLabel('slots') + ' room first.'); return; }
     const betIdx = parseInt($('slotBet').value,10) || 0;
     const bet    = SLOT_BETS[Math.min(betIdx, unlockedBets()-1)];
     if (state.gold < bet.cost) { toast(`Need ${money(bet.cost)} to spin.`); return; }
@@ -422,10 +426,77 @@
     checkClear('slots','slotsGoal','slotsGoalText');
   }
 
+  // ── Room unlock gating ──────────────────────────────────────────────────────
+  function roomUnlocked(room) {
+    const i = ALL_ROOMS.indexOf(room);
+    if (i <= 0) return true;
+    return !!state[ALL_ROOMS[i-1]].cleared;
+  }
+  function prevRoomLabel(room) {
+    const i = ALL_ROOMS.indexOf(room);
+    return i > 0 ? (ROOM_LABEL[ALL_ROOMS[i-1]] || '') : '';
+  }
+  const _ROOM_BTN = { darts:'throwBtn', scratch:'scratchBtn', slots:'slotBtn', pachinko:'dropBtn', sushi:'cookBtn', gacha:'pullBtn' };
+  function updateRoomLocks() {
+    ALL_ROOMS.forEach(room => {
+      const unlocked = roomUnlocked(room);
+      const note = $(room + 'Lock');
+      if (note) note.style.display = unlocked ? 'none' : 'block';
+      const btn = $(_ROOM_BTN[room]);
+      if (btn && !unlocked) btn.disabled = true;
+      else if (btn && room !== 'slots') btn.disabled = false;
+      const tab = qs('nav.tabs button[data-tab="' + room + '"]');
+      if (tab) {
+        const hasLock = tab.textContent.indexOf('🔒') === 0;
+        if (!unlocked && !hasLock) tab.textContent = '🔒 ' + tab.textContent;
+        if (unlocked && hasLock) tab.textContent = tab.textContent.replace('🔒 ', '');
+      }
+    });
+  }
+
+  // ── Animation helpers for the newer rooms (self-contained CSS toggles) ───────
+  const SUSHI_EMOJI = ['🍣','🍤','🍱','🍙','🍥','🍘'];
+  const GACHA_PETS  = { Common:'🐭', Rare:'🐱', Epic:'🦊', Legendary:'🐉' };
+  function animPachinko(slot, jackpot) {
+    const ball = $('pachinkoBall');
+    if (ball) {
+      ball.style.left = (15 + Math.random()*70) + '%';
+      ball.style.animation = 'none'; void ball.offsetWidth;
+      ball.style.animation = 'pdrop 0.7s cubic-bezier(.45,0,.7,1)';
+    }
+    const r = $('pachinkoResult');
+    if (r) { r.textContent = jackpot ? '💥 25×' : slot + '×'; r.style.color = jackpot ? 'var(--gold)' : 'var(--accent)'; }
+  }
+  function animSushi(won, perfect) {
+    const target = SUSHI_EMOJI[Math.floor(Math.random()*SUSHI_EMOJI.length)];
+    ['sushiP0','sushiP1','sushiP2'].forEach((id,i) => {
+      const p = $(id); if (!p) return;
+      p.style.animation = 'none'; void p.offsetWidth;
+      p.textContent = won ? target : SUSHI_EMOJI[(i*2+1) % SUSHI_EMOJI.length];
+      p.style.animation = 'sflip 0.4s ease';
+    });
+    const stage = $('sushiStage');
+    if (stage) { stage.classList.toggle('match', !!won); stage.classList.toggle('perfect', !!perfect); }
+  }
+  function animGacha(rarityName) {
+    const cap = $('gachaCapsule'); if (!cap) return;
+    cap.style.animation = 'none'; void cap.offsetWidth;
+    cap.textContent = '🥚';
+    cap.classList.add('shaking');
+    setTimeout(() => {
+      cap.classList.remove('shaking');
+      cap.textContent = GACHA_PETS[rarityName] || '🐾';
+      cap.style.animation = 'gpop 0.45s ease';
+      cap.style.color = ({ Common:'var(--ink)', Rare:'var(--blue)', Epic:'var(--purple)', Legendary:'var(--gold)' })[rarityName] || 'var(--ink)';
+    }, 360);
+  }
+
   // ── Pachinko actions ───────────────────────────────────────────────────────
   function dropBall() {
+    if (!roomUnlocked('pachinko')) { toast('🔒 Clear the ' + prevRoomLabel('pachinko') + ' room first.'); return; }
     const jackpot = Math.random() < (0.02 + pachinkoLuck());
     const slot = jackpot ? 25 : [0.3,0.5,1,1,2,3,5][Math.floor(Math.random()*7)];
+    animPachinko(slot, jackpot);
     const payout = Math.max(1, pachinkoValue() * slot);
     earn(payout);
     state.pachinko.best = Math.max(state.pachinko.best, payout);
@@ -441,9 +512,11 @@
 
   // ── Sushi actions ──────────────────────────────────────────────────────────
   function cookSushi() {
+    if (!roomUnlocked('sushi')) { toast('🔒 Clear the ' + prevRoomLabel('sushi') + ' room first.'); return; }
     const won = Math.random() < (0.35 + sushiLuck());
+    const perfect = won && Math.random() < 0.04;
+    animSushi(won, perfect);
     if (won) {
-      const perfect = Math.random() < 0.04;
       const payout = Math.max(1, perfect ? sushiValue()*15 : sushiValue()*(1 + Math.random()*2));
       earn(payout);
       state.sushi.best = Math.max(state.sushi.best, payout);
@@ -463,6 +536,7 @@
 
   // ── Gacha actions ──────────────────────────────────────────────────────────
   function pullGacha() {
+    if (!roomUnlocked('gacha')) { toast('🔒 Clear the ' + prevRoomLabel('gacha') + ' room first.'); return; }
     const L = gachaLuck();
     const r = Math.random();
     let rarity;
@@ -470,6 +544,7 @@
     else if (r < 0.03 + 0.30*L) rarity = GACHA_RARITIES[2];
     else if (r < 0.15 + 0.30*L) rarity = GACHA_RARITIES[1];
     else rarity = GACHA_RARITIES[0];
+    animGacha(rarity.name);
     const payout = Math.max(1, gachaValue() * rarity.mult * (1 + Math.random()));
     earn(payout);
     state.gacha.best = Math.max(state.gacha.best, payout);
@@ -595,6 +670,7 @@
 
   // ── Upgrades UI ────────────────────────────────────────────────────────────
   function buyUpgrade(room, def) {
+    if (!roomUnlocked(room)) { toast('🔒 Clear the ' + prevRoomLabel(room) + ' room first.'); return; }
     const level = lvl(room, def.id);
     if (level >= def.max) { toast('Maxed out.'); return; }
     const cost = costOf(def, level);
@@ -756,6 +832,7 @@
     setText('sushiAuto',     sushiAuto() + '/s');
     setText('gachaValue',    money(gachaValue()));
     setText('gachaAuto',     gachaAuto() + '/s');
+    updateRoomLocks();
     renderAffordability();
     _renderFocus();
   }
@@ -847,12 +924,13 @@
   function sendChat(text) { if (ws && ws.readyState===1) ws.send(JSON.stringify({type:'guild_chat',text})); }
 
   // ── Prestige ───────────────────────────────────────────────────────────────
-  function canPrestige() { return state.darts.cleared && state.scratch.cleared; }
+  function canPrestige() { return ALL_ROOMS.every(r => state[r].cleared); }
 
   function updatePrestigeBtn() {
     const btn = $('prestigeBtn'); if (!btn) return;
+    const left = ALL_ROOMS.filter(r => !state[r].cleared).length;
     btn.disabled = !canPrestige();
-    btn.title    = canPrestige() ? 'Reset progress for +50% permanent earnings' : 'Clear Darts and Scratchers first';
+    btn.title    = canPrestige() ? 'Reset all rooms for +50% permanent earnings & stronger duels' : 'Clear all 6 rooms first (' + left + ' to go)';
   }
 
   async function doPrestige() {
@@ -1025,10 +1103,12 @@
       const tb = $('boardList'); tb.innerHTML = '';
       players.forEach((p,i) => {
         const tr  = document.createElement('tr');
-        const star = '✨'.repeat(p.prestige||0).slice(0,14)||'—';
-        tr.innerHTML = `<td>${i+1}</td><td>${p.username}</td><td class="gold">${money(p.lifetime)}</td>
+        const pr = p.prestige || 0;
+        const badge = pr > 0 ? `<span title="${pr} prestige(s)" style="color:var(--gold);">👑 ${pr}</span>` : '—';
+        const nameCell = pr > 0 ? `👑 ${p.username}` : p.username;
+        tr.innerHTML = `<td>${i+1}</td><td>${nameCell}</td><td class="gold">${money(p.lifetime)}</td>
           <td>${money(p.netWorth)}</td><td>${p.guild||'—'}</td><td>${p.wins||0}W/${p.losses||0}L</td>
-          <td title="${p.prestige||0} prestige(s)">${star}</td>`;
+          <td>${badge}</td>`;
         tb.appendChild(tr);
       });
     } catch (e) { toast(e.message); }

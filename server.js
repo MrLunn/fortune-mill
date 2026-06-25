@@ -247,9 +247,9 @@ async function handleApi(req, res) {
     const p = findPlayerByToken(body.token);
     if (!p) return sendJSON(res, 401, { error: 'Bad token.' });
     const s = body.state || {};
-    const dartsCleared = s.darts && s.darts.cleared;
-    const scratchCleared = s.scratch && s.scratch.cleared;
-    if (!dartsCleared || !scratchCleared) return sendJSON(res, 400, { error: 'Clear both rooms first.' });
+    const PRESTIGE_ROOMS = ['darts', 'scratch', 'slots', 'pachinko', 'sushi', 'gacha'];
+    const allCleared = PRESTIGE_ROOMS.every((r) => s[r] && s[r].cleared);
+    if (!allCleared) return sendJSON(res, 400, { error: 'Clear all six rooms first.' });
     p.prestige = (p.prestige || 0) + 1;
     p.state = null;
     p.netWorth = 0;
