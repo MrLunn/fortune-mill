@@ -27,7 +27,7 @@ const USE_REDIS = !!(UPSTASH_URL && UPSTASH_TOKEN);
 const REDIS_KEY = 'fortunemill:db';
 
 // Only these files are ever served to the browser. Everything else stays private.
-const STATIC_WHITELIST = new Set(['index.html', 'game.js', 'animations.js', 'music.js', 'dopamine.js']);
+const STATIC_WHITELIST = new Set(['index.html', 'game.js', 'animations.js', 'music.js', 'dopamine.js', 'scene3d.js']);
 
 let db = { players: {}, guilds: {} };
 

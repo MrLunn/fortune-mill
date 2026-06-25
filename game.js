@@ -415,6 +415,7 @@
 
     logTo('dartsLog', `🪓 ${crit?'CLEAVE! ':''}Axe struck for ${money(got)} (${Math.round(accuracy*100)}% aim)`, crit?'good':'');
     animAxe(crit);
+    try { if (typeof Scene3D!=='undefined') Scene3D.hit('darts', crit); } catch {}
     AnimFloat('+'+money(got), $('throwBtn'), crit?'#ffd166':'#00e87a');
     SFX('sfxDart', crit);
     damageBoss('darts', got);
@@ -501,7 +502,7 @@
       logTxt = `${res.join('')} — ${jackpot?'💎 JACKPOT! ':'3 OF A KIND! '}+${money(got)}`;
       logCls = jackpot ? 'good' : '';
       AnimFloat('+'+money(got), $('slotBtn'), jackpot?'#ffc820':'#00e87a');
-      fxBurst('slotBtn', jackpot?'#ffc820':'#00e87a', jackpot?24:12); if (jackpot) screenFlash();
+      fxBurst('slotBtn', jackpot?'#ffc820':'#00e87a', jackpot?24:12); if (jackpot) screenFlash(); try { if (typeof Scene3D!=='undefined') Scene3D.hit('slots', jackpot); } catch {}
       if (jackpot) { SFX('sfxWin', true); if(typeof Dopamine!=='undefined') Dopamine.shake('heavy'); }
       else         { SFX('sfxWin', false);if(typeof Dopamine!=='undefined') Dopamine.shake('light'); }
     } else if (two) {
@@ -576,7 +577,7 @@
     const sym = RUNES[Math.floor(Math.random()*RUNES.length)];
     ['runeS0','runeS1','runeS2'].forEach((id,i) => { const e=$(id); if(!e)return; e.style.animation='none'; void e.offsetWidth; e.textContent = won ? sym : RUNES[(i*5+3)%RUNES.length]; e.style.animation='sflip 0.4s ease'; const st=e.parentElement; if(st&&st.classList){ st.classList.toggle('lit', !!won); } });
     const stage=$('runeStage'); if(stage){ stage.classList.toggle('match', !!won); stage.classList.toggle('perfect', !!jackpot); }
-    if (won) { fxBurst('scratchBtn', jackpot?'#ffd166':'#a877e0', jackpot?22:12); if (jackpot) screenFlash('radial-gradient(circle, rgba(168,119,224,0.22), transparent 70%)'); }
+    if (won) { fxBurst('scratchBtn', jackpot?'#ffd166':'#a877e0', jackpot?22:12); if (jackpot) screenFlash('radial-gradient(circle, rgba(168,119,224,0.22), transparent 70%)'); try { if (typeof Scene3D!=='undefined') Scene3D.hit('scratch', jackpot); } catch {} }
   }
   function fxBurst(elId, color, n) {
     try {
@@ -656,7 +657,7 @@
     addFocus(6);
     logTo('pachinkoLog', `🪨 ${jackpot?'💥 25× RUNE STRIKE! ':''}Boulder hit ${slot}× → ${money(got)}`, jackpot?'good':'');
     AnimFloat('+'+money(got), $('dropBtn'), jackpot?'#ffc820':'#00e87a');
-    if (jackpot) { fxBurst('dropBtn', '#ffc820', 22); screenFlash(); }
+    if (jackpot) { fxBurst('dropBtn', '#ffc820', 22); screenFlash(); } try { if (typeof Scene3D!=='undefined') Scene3D.hit('pachinko', jackpot); } catch {}
     SFX(jackpot ? 'sfxWin' : 'sfxDart', jackpot);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     refreshTop();
@@ -677,7 +678,7 @@
       if (perfect) updateChallengeProgress('jackpots', 1);
       logTo('sushiLog', `🍖 ${perfect?'🌟 PERFECT FEAST! ':'Feast! '}${money(got)}`, perfect?'good':'');
       AnimFloat('+'+money(got), $('cookBtn'), perfect?'#ffc820':'#00e87a');
-      if (perfect) { fxBurst('cookBtn', '#ffc820', 22); screenFlash(); }
+      if (perfect) { fxBurst('cookBtn', '#ffc820', 22); screenFlash(); } try { if (typeof Scene3D!=='undefined') Scene3D.hit('sushi', perfect); } catch {}
       SFX('sfxWin', perfect);
     } else {
       logTo('sushiLog', `🍖 The hall goes hungry…`, 'muted');
@@ -708,7 +709,7 @@
     addFocus(6);
     logTo('gachaLog', `🐺 Summoned a ${rarity.name}! +${money(got)}`, rarity.cls);
     AnimFloat('+'+money(got), $('pullBtn'), rarity.mult>=30?'#ffc820':'#00e87a');
-    if (rarity.mult>=30) { fxBurst('pullBtn', rarity.mult>=150?'#ffc820':'#a877e0', rarity.mult>=150?26:16); if (rarity.mult>=150) screenFlash(); }
+    if (rarity.mult>=30) { fxBurst('pullBtn', rarity.mult>=150?'#ffc820':'#a877e0', rarity.mult>=150?26:16); if (rarity.mult>=150) screenFlash(); } try { if (typeof Scene3D!=='undefined') Scene3D.hit('gacha', rarity.mult>=30); } catch {}
     SFX('sfxWin', rarity.mult>=30);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     refreshTop();
@@ -1301,6 +1302,7 @@
         btn.classList.add('active');
         const tab = btn.dataset.tab;
         qsa('section[data-view]').forEach(s=>s.classList.toggle('hidden', s.dataset.view!==tab));
+        try { if (typeof Scene3D !== 'undefined') Scene3D.setRoom(tab); } catch {}
         if (tab==='pvp')        { loadOpponents(); updateRecord(); }
         if (tab==='guild')      { loadGuilds(); refreshGuildIfMember(); }
         if (tab==='board')      loadBoard();
@@ -1363,6 +1365,7 @@
       try { Anim.init(); } catch {}
     }
     if (typeof Music !== 'undefined') { try { Music.start(); } catch {} }
+    if (typeof Scene3D !== 'undefined') { try { Scene3D.init(); Scene3D.setRoom('darts'); } catch {} }
 
     if (typeof Dopamine !== 'undefined') {
       Dopamine.init(state, auth, perSecond, (amt)=>{ earn(amt); refreshTop(); });
