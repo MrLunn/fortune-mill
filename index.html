@@ -336,7 +336,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
             <div class="focus-track"><div class="focus-fill" id="focusFill"></div></div>
           </div>
           <div id="dartboardSlot" style="text-align:center;margin:6px 0;"></div>
-          <div class="anim-stage axe-stage" data-stage="darts"><span class="axe" id="axeProj">🪓</span><div class="target3d" id="axeTarget"><div class="tring r1"></div><div class="tring r2"></div><div class="tring r3"></div><div class="tbull"></div></div></div>
+          <div class="anim-stage axe-stage"><span class="axe" id="axeProj">🪓</span><div class="target3d" id="axeTarget"><div class="tring r1"></div><div class="tring r2"></div><div class="tring r3"></div><div class="tbull"></div></div></div>
           <button class="big act" id="throwBtn">HURL AXE (space)</button>
           <div class="stat"><span class="k">Base value</span><span class="v gold" id="dartValue">$1</span></div>
           <div class="stat"><span class="k">Auto-throwers</span><span class="v" id="dartAuto">0/s</span></div>
@@ -364,7 +364,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <p class="boss-hp" id="scratchGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="scratchCoins">$0</b></div>
           <div class="field"><label>Ticket tier</label><select id="ticketTier"></select></div>
-          <div class="anim-stage rune-stage" id="runeStage" data-stage="scratch"><div class="runestone"><span class="rsigil" id="runeS0">ᚠ</span></div><div class="runestone"><span class="rsigil" id="runeS1">ᚦ</span></div><div class="runestone"><span class="rsigil" id="runeS2">ᚱ</span></div></div>
+          <div class="anim-stage rune-stage" id="runeStage"><div class="runestone"><span class="rsigil" id="runeS0">ᚠ</span></div><div class="runestone"><span class="rsigil" id="runeS1">ᚦ</span></div><div class="runestone"><span class="rsigil" id="runeS2">ᚱ</span></div></div>
           <button class="big act" id="scratchBtn">CARVE A RUNE</button>
           <div class="stat"><span class="k">Win chance</span><span class="v good" id="scratchLuck">25%</span></div>
           <div class="stat"><span class="k">Auto-scratchers</span><span class="v" id="scratchAuto">0/s</span></div>
@@ -390,7 +390,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <div class="progress"><div id="slotsGoal"></div></div>
           <p class="boss-hp" id="slotsGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="slotsCoins">$0</b></div>
-          <div class="reels" data-stage="slots" style="position:relative;">
+          <div class="reels">
             <div class="reel"><div class="reel-inner" id="reel0">🍒</div><div class="reel-shine"></div></div>
             <div class="reel"><div class="reel-inner" id="reel1">🍋</div><div class="reel-shine"></div></div>
             <div class="reel"><div class="reel-inner" id="reel2">🍇</div><div class="reel-shine"></div></div>
@@ -425,7 +425,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <div class="progress"><div id="pachinkoGoal"></div></div>
           <p class="boss-hp" id="pachinkoGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="pachinkoCoins">$0</b></div>
-          <div class="anim-stage pachinko-stage" data-stage="pachinko"><div class="pball" id="pachinkoBall">🪨</div><div class="pachinko-result" id="pachinkoResult"></div></div>
+          <div class="anim-stage pachinko-stage"><div class="pball" id="pachinkoBall">🪨</div><div class="pachinko-result" id="pachinkoResult"></div></div>
           <button class="big act" id="dropBtn">DROP BOULDER (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="pachinkoValue">$1</span></div>
           <div class="stat"><span class="k">Auto-droppers</span><span class="v" id="pachinkoAuto">0/s</span></div>
@@ -450,7 +450,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <div class="progress"><div id="sushiGoal"></div></div>
           <p class="boss-hp" id="sushiGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="sushiCoins">$0</b></div>
-          <div class="anim-stage sushi-stage" id="sushiStage" data-stage="sushi"><span class="splate" id="sushiP0">🍖</span><span class="splate" id="sushiP1">🍺</span><span class="splate" id="sushiP2">🐟</span></div>
+          <div class="anim-stage sushi-stage" id="sushiStage"><span class="splate" id="sushiP0">🍖</span><span class="splate" id="sushiP1">🍺</span><span class="splate" id="sushiP2">🐟</span></div>
           <button class="big act" id="cookBtn">SERVE FEAST (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="sushiValue">$1</span></div>
           <div class="stat"><span class="k">Auto-cooks</span><span class="v" id="sushiAuto">0/s</span></div>
@@ -475,7 +475,7 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
           <div class="progress"><div id="gachaGoal"></div></div>
           <p class="boss-hp" id="gachaGoalText"></p>
           <div class="roompurse">⛀ Purse <b id="gachaCoins">$0</b></div>
-          <div class="anim-stage gacha-stage" data-stage="gacha"><div class="summon-circle"></div><div class="summon-circle s2"></div><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
+          <div class="anim-stage gacha-stage"><div class="summon-circle"></div><div class="summon-circle s2"></div><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
           <button class="big act" id="pullBtn">SUMMON BEAST (space)</button>
           <div class="stat"><span class="k">Base pull value</span><span class="v gold" id="gachaValue">$1</span></div>
           <div class="stat"><span class="k">Auto-pullers</span><span class="v" id="gachaAuto">0/s</span></div>
@@ -618,8 +618,6 @@ nav.tabs button.justunlocked { animation: tabflash 0.9s ease-in-out infinite; co
 <script src="animations.js"></script>
 <script src="music.js"></script>
 <script src="dopamine.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="scene3d.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
