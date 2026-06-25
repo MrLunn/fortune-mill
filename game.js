@@ -427,15 +427,13 @@
     if (!roomUnlocked('scratch')) { toast('🔒 Clear the ' + prevRoomLabel('scratch') + ' room first.'); return; }
     const tierIdx  = parseInt($('ticketTier').value,10) || 0;
     const t        = TICKETS[tierIdx];
-    if (state.scratch.coins < t.cost) { toast(`Need ${money(t.cost)} Rune coin for a ${t.name} stone.`); return; }
-    state.scratch.coins -= t.cost;
 
     const won    = Math.random() < (0.25 + scratchLuck());
     if (won) {
       const jackpot = Math.random() < (0.04 + lvl('scratch','elite_luck')*0.01);
       let   win     = t.maxWin * (0.2 + Math.random() * 0.8);
       if (jackpot)  win = t.maxWin * jackpotMult();
-      win = Math.max(t.cost, Math.floor(win));
+      win = Math.max(1, Math.floor(win));
       animRunes(true, jackpot);
       const got = earnTo('scratch', win);
       if (false) {}
@@ -449,7 +447,7 @@
       SFX('sfxWin', jackpot);
     } else {
       animRunes(false, false);
-      logTo('scratchLog', `${t.name} rune fell silent. (-${money(t.cost)})`, 'muted');
+      logTo('scratchLog', `${t.name} rune fell silent.`, 'muted');
       SFX('sfxLoss');
     }
 
@@ -466,9 +464,7 @@
     if (!roomUnlocked('slots')) { toast('🔒 Clear the ' + prevRoomLabel('slots') + ' room first.'); return; }
     const betIdx = parseInt($('slotBet').value,10) || 0;
     const bet    = SLOT_BETS[Math.min(betIdx, unlockedBets()-1)];
-    if (state.slots.coins < bet.cost) { toast(`Need ${money(bet.cost)} Reel coin to spin.`); return; }
 
-    state.slots.coins -= bet.cost;
     _slotSpinning = true;
     $('slotBtn').disabled = true;
 
@@ -514,7 +510,7 @@
       logTxt = `${res.join('')} — Pair! +${money(got)}`;
       AnimFloat('+'+money(got), $('slotBtn'), '#33aaff');
     } else {
-      logTxt = `${res.join('')} — No match. -${money(bet.cost)}`;
+      logTxt = `${res.join('')} — No match.`;
       logCls = 'bad';
     }
 
@@ -918,7 +914,7 @@
       const prev = sel.value; sel.innerHTML = '';
       for (let i = 0; i < unlockedTiers(); i++) {
         const o = document.createElement('option');
-        o.value = i; o.textContent = `${TICKETS[i].name} — ${money(TICKETS[i].cost)}, up to ${money(TICKETS[i].maxWin)}`;
+        o.value = i; o.textContent = `${TICKETS[i].name} — free, up to ${money(TICKETS[i].maxWin)}`;
         sel.appendChild(o);
       }
       if (prev && prev < unlockedTiers()) sel.value = prev;
@@ -928,7 +924,7 @@
       const prev = sb.value; sb.innerHTML = '';
       for (let i = 0; i < unlockedBets(); i++) {
         const o = document.createElement('option');
-        o.value = i; o.textContent = `${SLOT_BETS[i].name} — ${money(SLOT_BETS[i].cost)} per spin`;
+        o.value = i; o.textContent = `${SLOT_BETS[i].name} — free, ${money(SLOT_BETS[i].cost)} base payout`;
         sb.appendChild(o);
       }
       if (prev && prev < unlockedBets()) sb.value = prev;
