@@ -9,6 +9,16 @@
   const NEW_ROOMS = ['pachinko', 'sushi', 'gacha'];
   const ALL_ROOMS = ['darts', 'scratch', 'slots', 'pachinko', 'sushi', 'gacha'];
   const ROOM_LABEL = { darts:'Axe', scratch:'Rune', slots:'Reel', pachinko:'Boulder', sushi:'Feast', gacha:'Beast' };
+  const BOSS = {
+    darts:   { name:'Draugr Raider',   emoji:'🧟', hp: 25000 },
+    scratch: { name:'Rune Wraith',     emoji:'👻', hp: 150000 },
+    slots:   { name:'Fafnir the Wyrm', emoji:'🐲', hp: 800000 },
+    pachinko:{ name:'Stone Jötunn',    emoji:'🗿', hp: 4000000 },
+    sushi:   { name:'Glutton Troll',   emoji:'👹', hp: 18000000 },
+    gacha:   { name:'Warden of Hel',   emoji:'💀', hp: 75000000 },
+  };
+  const FINAL_BOSS = { name:'Jörmungandr', emoji:'🐉', hp: 400000000 };
+  const MASTERY_BASE = { darts:50000, scratch:300000, slots:2000000, pachinko:10000000, sushi:50000000, gacha:200000000 };
 
   // ── State ──────────────────────────────────────────────────────────────────
   const state = {
@@ -31,7 +41,9 @@
     challengeProgress: {},
     todayEarned: 0, todayDate: '',
     throwCount: 0,
+    finalBossHp: 400000000, finalBossDefeated: false,
   };
+  ALL_ROOMS.forEach(r => { state[r].bossHp = BOSS[r].hp; });
 
   let auth = { username: null, token: null, prestige: 0, dailyStreak: 0, lastClaim: 0 };
   let passwordRequired = false;
@@ -251,7 +263,7 @@
     const guildM = getGuildBuff()?.mult || 1;
     const focM   = 1 + focusBonus();
 
-    const boosted = amount * prestigeMultiplier() * comboM * luckyM * levelM * achM * guildM * focM;
+    const boosted = amount * prestigeMultiplier() * comboM * luckyM * levelM * achM * guildM * focM * masteryMult();
     state.gold     += boosted;
     state.lifetime += boosted;
 
@@ -266,18 +278,32 @@
   }
 
   // ── Room clear check ───────────────────────────────────────────────────────
+  // ── Bosses: each room is cleared by slaying its boss; earnings = damage ──────
+  function damageBoss(room, dmg) {
+    if (state[room].cleared) return;
+    if (state[room].bossHp == null) state[room].bossHp = BOSS[room].hp;
+    state[room].bossHp = Math.max(0, state[room].bossHp - dmg);
+  }
   function checkClear(room, goalId, textId) {
-    const best = state[room]?.best || 0;
-    const pct  = Math.min(100, (best / ROOM_GOAL) * 100);
-    if ($(goalId)) $(goalId).style.width = pct.toFixed(1) + '%';
-    if ($(textId)) $(textId).textContent = state[room]?.cleared
-      ? `CLEARED ✓  (best single payout: ${money(best)})`
-      : `Best payout: ${money(best)} / ${money(ROOM_GOAL)} to clear`;
-    if (!state[room]?.cleared && best >= ROOM_GOAL) {
+    const b = BOSS[room]; const max = b.hp;
+    if (state[room].cleared) state[room].bossHp = 0;
+    if (state[room].bossHp == null) state[room].bossHp = max;
+    const hp = Math.max(0, state[room].bossHp);
+    const bar = $(goalId); const txt = $(textId);
+    if (bar) {
+      bar.style.width = (hp / max * 100).toFixed(1) + '%';
+      bar.style.background = state[room].cleared
+        ? 'linear-gradient(90deg, var(--accent), #8fe0ff)'
+        : 'linear-gradient(90deg, #d23b3b, #ff7a55)';
+    }
+    if (txt) txt.innerHTML = state[room].cleared
+      ? `${b.emoji} ${b.name} — SLAIN ✓`
+      : `${b.emoji} ${b.name} — ${money(hp)} / ${money(max)} HP`;
+    if (!state[room].cleared && hp <= 0) {
       state[room].cleared = true;
-      toast(`🎉 ${ROOM_LABEL[room]||room} trial CONQUERED! The next hall opens.`);
-      updatePrestigeBtn();
-      updateRoomLocks();
+      toast(`⚔ ${b.emoji} ${b.name} SLAIN! The next hall opens.`);
+      SFX('sfxPrestige');
+      updatePrestigeBtn(); updateRoomLocks(); updateFinalBoss();
       if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
     }
   }
@@ -289,6 +315,64 @@
     checkClear('sushi','sushiGoal','sushiGoalText');
     checkClear('gacha','gachaGoal','gachaGoalText');
   }
+
+  // ── Mastery: cleared rooms unlock a global earnings boost ───────────────────
+  function masteryMult() { return 1 + 0.10 * ALL_ROOMS.reduce((n, r) => n + lvl(r, 'mastery'), 0); }
+  function masteryDef(room) { return { id:'mastery', name: ROOM_LABEL[room] + ' Mastery', desc:'+10% to ALL earnings (global)', base: MASTERY_BASE[room], growth: 1.9, max: 50 }; }
+  function renderMasteryFor(room) {
+    const c = $(room + 'Mastery'); if (!c) return;
+    c.innerHTML = '';
+    if (!state[room].cleared) {
+      const d = document.createElement('div'); d.className = 'plock';
+      d.innerHTML = '🔒 <span>Slay the boss to unlock ' + ROOM_LABEL[room] + ' Mastery</span>';
+      c.appendChild(d); return;
+    }
+    const def = masteryDef(room); const level = lvl(room, 'mastery'); const cost = costOf(def, level); const maxed = level >= def.max;
+    const row = document.createElement('div'); row.className = 'upgrade';
+    row.innerHTML = `
+      <div class="info">
+        <div class="uname" style="color:var(--gold);">⚜ ${def.name} <span class="pill">Lv ${level}</span></div>
+        <div class="udesc">${def.desc}</div>
+      </div>
+      <button class="act cost" style="border-color:var(--gold);color:var(--gold);" ${maxed || state.gold < cost ? 'disabled' : ''}>
+        ${maxed ? 'MAX' : money(cost)}
+      </button>`;
+    row.querySelector('button').addEventListener('click', () => buyUpgrade(room, def));
+    c.appendChild(row);
+  }
+
+  // ── Final boss (Ragnarök) ───────────────────────────────────────────────────
+  function allRoomsClearedC() { return ALL_ROOMS.every(r => state[r].cleared); }
+  function updateFinalBoss() {
+    const ready = allRoomsClearedC();
+    const lock = $('finalLock'); const fight = $('finalFight');
+    if (lock) lock.style.display = ready ? 'none' : 'block';
+    if (fight) fight.style.display = ready ? 'block' : 'none';
+    const max = FINAL_BOSS.hp;
+    const hp = state.finalBossDefeated ? 0 : Math.max(0, state.finalBossHp == null ? max : state.finalBossHp);
+    const bar = $('finalBossBar'); const txt = $('finalBossText');
+    if (bar) bar.style.width = (hp / max * 100).toFixed(1) + '%';
+    if (txt) txt.innerHTML = state.finalBossDefeated
+      ? `${FINAL_BOSS.emoji} ${FINAL_BOSS.name} — VANQUISHED ✓`
+      : `${FINAL_BOSS.emoji} ${FINAL_BOSS.name} — ${money(hp)} / ${money(max)} HP`;
+    const sb = $('strikeBtn'); if (sb) sb.disabled = !ready || state.finalBossDefeated;
+  }
+  function strikeFinalBoss() {
+    if (!allRoomsClearedC()) { toast('Slay all six hall bosses first.'); return; }
+    if (state.finalBossDefeated) { toast('Jörmungandr is already vanquished.'); return; }
+    const dmg = Math.max(1, Math.round(combat().atk * 25 + perSecond()));
+    state.finalBossHp = Math.max(0, (state.finalBossHp == null ? FINAL_BOSS.hp : state.finalBossHp) - dmg);
+    logTo('finalLog', `⚔ You strike ${FINAL_BOSS.name} for ${money(dmg)}!`, '');
+    SFX('sfxDart', true);
+    if (state.finalBossHp <= 0 && !state.finalBossDefeated) {
+      state.finalBossDefeated = true;
+      toast(`🐉 ${FINAL_BOSS.name} VANQUISHED! Ascension to Valhalla awaits.`);
+      SFX('sfxPrestige');
+      updatePrestigeBtn();
+    }
+    updateFinalBoss();
+  }
+
 
   // ── Focus meter ────────────────────────────────────────────────────────────
   function addFocus(amt) { state.focus = Math.min(100, (state.focus || 0) + amt); _renderFocus(); }
@@ -323,6 +407,7 @@
     if (typeof Anim !== 'undefined') { try { Anim.throwDart(accuracy, crit); } catch {} }
     AnimFloat('+'+money(payout), $('throwBtn'), crit?'#ffd166':'#00e87a');
     SFX('sfxDart', crit);
+    damageBoss('darts', payout);
     refreshTop();
     checkClear('darts','dartsGoal','dartsGoalText');
   }
@@ -343,6 +428,7 @@
       win = Math.max(t.cost, Math.floor(win));
       earn(win);
       state.scratch.best = Math.max(state.scratch.best, win);
+      damageBoss('scratch', win);
       state.scratchWins  = (state.scratchWins||0) + 1;
       if (jackpot) { state.jackpots = (state.jackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('scratchWins',1);
@@ -400,6 +486,7 @@
       if (jackpot) { state.slotJackpots=(state.slotJackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('slotWins',1);
       state.slots.best = Math.max(state.slots.best||0, win);
+      damageBoss('slots', win);
       logTxt = `${res.join('')} — ${jackpot?'💎 JACKPOT! ':'3 OF A KIND! '}+${money(win)}`;
       logCls = jackpot ? 'good' : '';
       AnimFloat('+'+money(win), $('slotBtn'), jackpot?'#ffc820':'#00e87a');
@@ -411,6 +498,7 @@
       updateChallengeProgress('slotWins',1);
       state.slotWins = (state.slotWins||0)+1;
       state.slots.best = Math.max(state.slots.best||0, win);
+      damageBoss('slots', win);
       logTxt = `${res.join('')} — Pair! +${money(win)}`;
       AnimFloat('+'+money(win), $('slotBtn'), '#33aaff');
     } else {
@@ -500,6 +588,7 @@
     const payout = Math.max(1, pachinkoValue() * slot);
     earn(payout);
     state.pachinko.best = Math.max(state.pachinko.best, payout);
+    damageBoss('pachinko', payout);
     if (jackpot) updateChallengeProgress('jackpots', 1);
     addFocus(6);
     logTo('pachinkoLog', `🪨 ${jackpot?'💥 25× RUNE STRIKE! ':''}Boulder hit ${slot}× → ${money(payout)}`, jackpot?'good':'');
@@ -520,6 +609,7 @@
       const payout = Math.max(1, perfect ? sushiValue()*15 : sushiValue()*(1 + Math.random()*2));
       earn(payout);
       state.sushi.best = Math.max(state.sushi.best, payout);
+      damageBoss('sushi', payout);
       if (perfect) updateChallengeProgress('jackpots', 1);
       logTo('sushiLog', `🍖 ${perfect?'🌟 PERFECT FEAST! ':'Feast! '}${money(payout)}`, perfect?'good':'');
       AnimFloat('+'+money(payout), $('cookBtn'), perfect?'#ffc820':'#00e87a');
@@ -548,6 +638,7 @@
     const payout = Math.max(1, gachaValue() * rarity.mult * (1 + Math.random()));
     earn(payout);
     state.gacha.best = Math.max(state.gacha.best, payout);
+    damageBoss('gacha', payout);
     if (rarity.mult >= 150) updateChallengeProgress('jackpots', 1);
     addFocus(6);
     logTo('gachaLog', `🐺 Summoned a ${rarity.name}! +${money(payout)}`, rarity.cls);
@@ -671,6 +762,7 @@
   // ── Upgrades UI ────────────────────────────────────────────────────────────
   function buyUpgrade(room, def) {
     if (!roomUnlocked(room)) { toast('🔒 Clear the ' + prevRoomLabel(room) + ' room first.'); return; }
+    if (def.id === 'mastery' && !state[room].cleared) { toast('Slay the boss to unlock Mastery.'); return; }
     const level = lvl(room, def.id);
     if (level >= def.max) { toast('Maxed out.'); return; }
     const cost = costOf(def, level);
@@ -754,6 +846,7 @@
     _renderUpgradeList('pachinko',PACHINKO_UPGRADES,'pachinkoUpgrades');
     _renderUpgradeList('sushi',   SUSHI_UPGRADES,   'sushiUpgrades');
     _renderUpgradeList('gacha',   GACHA_UPGRADES,   'gachaUpgrades');
+    ALL_ROOMS.forEach(renderMasteryFor);
 
     const sel  = $('ticketTier'); if (sel) {
       const prev = sel.value; sel.innerHTML = '';
@@ -833,6 +926,7 @@
     setText('gachaValue',    money(gachaValue()));
     setText('gachaAuto',     gachaAuto() + '/s');
     updateRoomLocks();
+    updateFinalBoss();
     renderAffordability();
     _renderFocus();
   }
@@ -850,6 +944,7 @@
     if (a > 0) {
       earn(a * dartValue() * (1 + dartCrit()*9) * dt);
       state.darts.best = Math.max(state.darts.best, dartValue() * (1+dartCrit()*9));
+      damageBoss('darts', a * dartValue() * (1 + dartCrit()*9) * dt);
     }
     const s = scratchAuto();
     if (s > 0) {
@@ -857,6 +952,7 @@
       const per = t.maxWin * (0.25+scratchLuck()) * 0.5 * jackpotMult();
       earn(s * per * dt);
       state.scratch.best = Math.max(state.scratch.best, per);
+      damageBoss('scratch', s * per * dt);
     }
     const sa = slotAuto();
     if (sa > 0) {
@@ -864,15 +960,24 @@
       const per = sb.cost * 0.64 * slotMult() * (1+slotLuck());
       earn(sa * per * dt);
       state.slots.best = Math.max(state.slots.best, per);
+      damageBoss('slots', sa * per * dt);
     }
     const pa = pachinkoAuto();
-    if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); earn(pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); }
+    if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); earn(pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); damageBoss('pachinko', pa*per*dt); }
     const su = sushiAuto();
-    if (su > 0) { const per = sushiValue()*((0.35+sushiLuck())*2); earn(su*per*dt); state.sushi.best = Math.max(state.sushi.best, per); }
+    if (su > 0) { const per = sushiValue()*((0.35+sushiLuck())*2); earn(su*per*dt); state.sushi.best = Math.max(state.sushi.best, per); damageBoss('sushi', su*per*dt); }
     const ga = gachaAuto();
-    if (ga > 0) { const per = gachaValue()*(1.5+gachaLuck()*30); earn(ga*per*dt); state.gacha.best = Math.max(state.gacha.best, per); }
+    if (ga > 0) { const per = gachaValue()*(1.5+gachaLuck()*30); earn(ga*per*dt); state.gacha.best = Math.max(state.gacha.best, per); damageBoss('gacha', ga*per*dt); }
 
     if (a>0 || s>0 || sa>0 || pa>0 || su>0 || ga>0) { refreshTop(); checkAllClears(); }
+    if (ALL_ROOMS.every(r => state[r].cleared) && !state.finalBossDefeated) {
+      const ps = perSecond();
+      if (ps > 0) {
+        state.finalBossHp = Math.max(0, (state.finalBossHp == null ? FINAL_BOSS.hp : state.finalBossHp) - ps * dt);
+        if (state.finalBossHp <= 0) { state.finalBossDefeated = true; toast('🐉 Jörmungandr falls! Ascension awaits.'); updatePrestigeBtn(); }
+        updateFinalBoss();
+      }
+    }
     _renderFocus();
   }
 
@@ -926,25 +1031,27 @@
   function sendChat(text) { if (ws && ws.readyState===1) ws.send(JSON.stringify({type:'guild_chat',text})); }
 
   // ── Prestige ───────────────────────────────────────────────────────────────
-  function canPrestige() { return ALL_ROOMS.every(r => state[r].cleared); }
+  function canPrestige() { return ALL_ROOMS.every(r => state[r].cleared) && state.finalBossDefeated; }
 
   function updatePrestigeBtn() {
     const btn = $('prestigeBtn'); if (!btn) return;
-    const left = ALL_ROOMS.filter(r => !state[r].cleared).length;
+    const cleared = ALL_ROOMS.every(r => state[r].cleared);
     btn.disabled = !canPrestige();
-    btn.title    = canPrestige() ? 'Reset all rooms for +50% permanent earnings & stronger duels' : 'Clear all 6 rooms first (' + left + ' to go)';
+    btn.title = canPrestige() ? 'Ascend to Valhalla: reset for +50% permanent earnings & stronger duels'
+      : (!cleared ? 'Slay all 6 hall bosses first' : 'Defeat Jörmungandr in Ragnarök to Ascend');
   }
 
   async function doPrestige() {
-    if (!canPrestige()) { toast('Clear Darts and Scratchers first!'); return; }
+    if (!canPrestige()) { toast('Slay all bosses, then Jörmungandr in Ragnarök, to Ascend.'); return; }
     if (!confirm(`Prestige #${auth.prestige+1}? Gold and upgrades reset. Permanent +50% earnings boost stacks. Lifetime, wins, guilds kept.`)) return;
     await saveGame();
     try {
       const r    = await api('/api/prestige', {token:auth.token, state});
       auth.prestige = r.prestige;
       state.gold  = 0;
-      ALL_ROOMS.forEach(room => { state[room] = {cleared:false,best:0,upgrades:{}}; });
-      renderUpgrades(); refreshTop(); checkAllClears();
+      ALL_ROOMS.forEach(room => { state[room] = {cleared:false,best:0,upgrades:{},bossHp:BOSS[room].hp}; });
+      state.finalBossHp = FINAL_BOSS.hp; state.finalBossDefeated = false;
+      renderUpgrades(); refreshTop(); checkAllClears(); updateFinalBoss();
       updatePrestigeBtn();
       setText('prestigeCount', auth.prestige);
       setText('prestigeMult', (prestigeMultiplier()*100).toFixed(0) + '%');
@@ -1128,6 +1235,7 @@
         if (tab==='guild')      { loadGuilds(); refreshGuildIfMember(); }
         if (tab==='board')      loadBoard();
         if (tab==='challenges') { renderChallenges(); renderAchievementList(); }
+        if (tab==='ragnarok') updateFinalBoss();
       });
     });
   }
@@ -1139,6 +1247,9 @@
       const s = typeof blob==='string' ? JSON.parse(blob) : blob;
       Object.assign(state, s);
       ALL_ROOMS.forEach(room => { state[room] = Object.assign({cleared:false,best:0,upgrades:{}}, s[room]); });
+      ALL_ROOMS.forEach(room => { if (state[room].bossHp == null) state[room].bossHp = state[room].cleared ? 0 : BOSS[room].hp; });
+      state.finalBossHp = (typeof s.finalBossHp === 'number') ? s.finalBossHp : FINAL_BOSS.hp;
+      state.finalBossDefeated = !!s.finalBossDefeated;
       state.achievements      = s.achievements      || [];
       state.milestones        = s.milestones        || [];
       state.crits             = s.crits             || 0;
@@ -1174,7 +1285,7 @@
     setText('slotWins', state.slotWins || 0);
     setText('slotJackpots', state.slotJackpots || 0);
 
-    renderUpgrades(); refreshTop(); checkAllClears();
+    renderUpgrades(); refreshTop(); checkAllClears(); updateFinalBoss();
     updatePrestigeBtn(); updateDailyBtn();
     setInterval(updateDailyBtn, 60000);
 
@@ -1234,6 +1345,7 @@
     $('dropBtn').addEventListener('click', dropBall);
     $('cookBtn').addEventListener('click', cookSushi);
     $('pullBtn').addEventListener('click', pullGacha);
+    var _sbtn = $('strikeBtn'); if (_sbtn) _sbtn.addEventListener('click', strikeFinalBoss);
     $('prestigeBtn').addEventListener('click', doPrestige);
     $('dailyBtn').addEventListener('click', claimDaily);
     const mute = $('muteBtn'); if (mute) mute.addEventListener('click', () => {

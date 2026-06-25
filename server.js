@@ -249,7 +249,7 @@ async function handleApi(req, res) {
     const s = body.state || {};
     const PRESTIGE_ROOMS = ['darts', 'scratch', 'slots', 'pachinko', 'sushi', 'gacha'];
     const allCleared = PRESTIGE_ROOMS.every((r) => s[r] && s[r].cleared);
-    if (!allCleared) return sendJSON(res, 400, { error: 'Clear all six rooms first.' });
+    if (!allCleared || !s.finalBossDefeated) return sendJSON(res, 400, { error: 'Slay all six bosses and Jörmungandr first.' });
     p.prestige = (p.prestige || 0) + 1;
     p.state = null;
     p.netWorth = 0;

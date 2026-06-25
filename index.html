@@ -225,6 +225,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
       <button data-tab="pachinko">🪨 Boulder</button>
       <button data-tab="sushi">🍖 Feast</button>
       <button data-tab="gacha">🐺 Beasts</button>
+      <button data-tab="ragnarok">🐉 Ragnarök</button>
       <button data-tab="challenges">📜 Quests</button>
       <button data-tab="pvp">⚔ Holmgang</button>
       <button data-tab="guild">🛡 Clan</button>
@@ -276,6 +277,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>Dart Upgrades</h2>
           <div id="dartsUpgrades"></div>
           <div id="dartPrestigeLocked"></div>
+          <div id="dartsMastery"></div>
         </div>
       </div>
     </section>
@@ -299,6 +301,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
           <h2>Scratcher Upgrades</h2>
           <div id="scratchUpgrades"></div>
           <div id="scratchPrestigeLocked"></div>
+          <div id="scratchMastery"></div>
         </div>
       </div>
     </section>
@@ -327,6 +330,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
         <div class="col panel">
           <h2>Slot Upgrades</h2>
           <div id="slotsUpgrades"></div>
+          <div id="slotsMastery"></div>
           <div style="margin-top:16px;">
             <h2>Payout Table</h2>
             <div id="slotPayoutTable" style="font-size:12px;display:grid;grid-template-columns:1fr auto;gap:4px 20px;"></div>
@@ -353,6 +357,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
         <div class="col panel">
           <h2>Pachinko Upgrades</h2>
           <div id="pachinkoUpgrades"></div>
+          <div id="pachinkoMastery"></div>
         </div>
       </div>
     </section>
@@ -375,6 +380,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
         <div class="col panel">
           <h2>Sushi Upgrades</h2>
           <div id="sushiUpgrades"></div>
+          <div id="sushiMastery"></div>
         </div>
       </div>
     </section>
@@ -397,6 +403,23 @@ tr:hover td { background:rgba(255,255,255,0.01); }
         <div class="col panel">
           <h2>Gacha Upgrades</h2>
           <div id="gachaUpgrades"></div>
+          <div id="gachaMastery"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RAGNARÖK -->
+    <section data-view="ragnarok" class="hidden">
+      <div class="panel">
+        <h2>🐉 Ragnarök — The World Serpent</h2>
+        <p class="muted" style="font-size:12px;">When all six hall bosses lie slain, Jörmungandr rises from the deep. Strike it down to earn your Ascension to Valhalla.</p>
+        <div class="lock-note" id="finalLock">🔒 Slay all six hall bosses (Axes, Runes, Norn Reels, Boulder, Feast, Beasts) to summon Jörmungandr.</div>
+        <div id="finalFight" style="display:none;">
+          <div class="progress" style="height:18px;"><div id="finalBossBar" style="background:linear-gradient(90deg,#9b1c1c,#ff5533);"></div></div>
+          <p id="finalBossText" style="font-size:14px;color:var(--gold);margin:6px 0;"></p>
+          <button class="big act" id="strikeBtn" style="border-color:var(--red);color:var(--red)!important;background:linear-gradient(135deg,#1a0810,#12060b);text-shadow:0 0 12px rgba(210,59,59,0.6);">⚔ STRIKE JÖRMUNGANDR</button>
+          <p class="muted" style="font-size:11px;margin-top:8px;">Each strike scales with your Battle Might — and your whole economy assaults the serpent every second.</p>
+          <div class="log" id="finalLog" style="height:170px;"></div>
         </div>
       </div>
     </section>
