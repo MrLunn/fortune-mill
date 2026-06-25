@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
 const ROOT_DIR = __dirname;
 const DATA_FILE = path.join(__dirname, 'data.json');
+const TEMP_FILE = DATA_FILE + '.tmp';
 const ROOM_PASSWORD = process.env.ROOM_PASSWORD || '';
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || '';
@@ -26,14 +27,11 @@ const USE_REDIS = !!(UPSTASH_URL && UPSTASH_TOKEN);
 const REDIS_KEY = 'fortunemill:db';
 
 // Only these files are ever served to the browser. Everything else stays private.
-const STATIC_WHITELIST = new Set(['index.html', 'game.js']);
+const STATIC_WHITELIST = new Set(['index.html', 'game.js', 'animations.js', 'music.js', 'dopamine.js']);
 
 let db = { players: {}, guilds: {} };
 
-// ---------------------------------------------------------------------------
-// Upstash Redis REST helper (zero-dependency, uses built-in https)
-// Sends commands as a JSON array in the POST body, e.g. ["SET","key","value"].
-// ---------------------------------------------------------------------------
+// ── Upstash Redis REST helper (zero-dependency, uses built-in https) ──────────
 function redisCommand(args) {
   return new Promise((resolve, reject) => {
     let u;
@@ -53,11 +51,8 @@ function redisCommand(args) {
       let d = '';
       res.on('data', (c) => (d += c));
       res.on('end', () => {
-        try {
-          const j = JSON.parse(d);
-          if (j.error) reject(new Error(j.error));
-          else resolve(j.result);
-        } catch (e) { reject(e); }
+        try { const j = JSON.parse(d); if (j.error) reject(new Error(j.error)); else resolve(j.result); }
+        catch (e) { reject(e); }
       });
     });
     req.on('error', reject);
@@ -72,9 +67,7 @@ async function loadDB() {
       const val = await redisCommand(['GET', REDIS_KEY]);
       if (val) { db = JSON.parse(val); db.players = db.players || {}; db.guilds = db.guilds || {}; }
       console.log('Loaded saved state from Upstash Redis.');
-    } catch (e) {
-      console.error('Redis load failed, starting fresh:', e.message);
-    }
+    } catch (e) { console.error('Redis load failed, starting fresh:', e.message); }
   } else {
     try {
       if (fs.existsSync(DATA_FILE)) {
@@ -82,15 +75,12 @@ async function loadDB() {
         db.players = db.players || {};
         db.guilds = db.guilds || {};
       }
-    } catch (e) {
-      console.error('Could not read data.json, starting fresh:', e.message);
-    }
+    } catch (e) { console.error('Could not read data.json, starting fresh:', e.message); }
   }
 }
 
-// File mode: debounced disk write. Redis mode: mark dirty and flush on a
-// timer so we stay well within Upstash's free 500K-commands/month limit
-// no matter how many players are active.
+// File mode: atomic debounced disk write. Redis mode: mark dirty + flush on a
+// timer so we stay well within Upstash's free 500K-commands/month limit.
 let saveTimer = null;
 let dirty = false;
 function saveDB() {
@@ -98,8 +88,12 @@ function saveDB() {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    fs.writeFile(DATA_FILE, JSON.stringify(db), (err) => { if (err) console.error('Save failed:', err.message); });
-  }, 800);
+    const payload = JSON.stringify(db);
+    fs.writeFile(TEMP_FILE, payload, (err) => {
+      if (err) { console.error('Save (write) failed:', err.message); return; }
+      fs.rename(TEMP_FILE, DATA_FILE, (err2) => { if (err2) console.error('Save (rename) failed:', err2.message); });
+    });
+  }, 500);
 }
 function flushRedis() {
   if (!USE_REDIS || !dirty) return;
@@ -108,9 +102,6 @@ function flushRedis() {
 }
 if (USE_REDIS) setInterval(flushRedis, 12000);
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 const token = () => crypto.randomBytes(16).toString('hex');
 
 function combatPower(p) {
@@ -135,10 +126,11 @@ const findPlayerByToken = (tok) =>
   tok ? Object.values(db.players).find((p) => p.token === tok) || null : null;
 
 function guildTreasure(g) {
-  return g.members.reduce((sum, m) => {
+  const memberSum = g.members.reduce((sum, m) => {
     const p = db.players[m.toLowerCase()];
     return sum + (p ? p.lifetime || 0 : 0);
   }, 0);
+  return memberSum + (g.bonusTreasure || 0);
 }
 
 function guildView(key) {
@@ -156,12 +148,7 @@ function guildView(key) {
 function resolveDuel(a, b) {
   const mk = (p) => {
     const s = p.combat || {};
-    return {
-      name: p.username,
-      hp: Math.max(20, s.hp || 100),
-      atk: Math.max(1, s.atk || 1),
-      luck: Math.min(0.75, (s.luck || 0) / 100),
-    };
+    return { name: p.username, hp: Math.max(20, s.hp || 100), atk: Math.max(1, s.atk || 1), luck: Math.min(0.75, (s.luck || 0) / 100) };
   };
   const A = mk(a), B = mk(b), log = [];
   log.push(`${A.name} (${A.hp} HP / ${A.atk} ATK) vs ${B.name} (${B.hp} HP / ${B.atk} ATK)`);
@@ -180,12 +167,6 @@ function resolveDuel(a, b) {
   const winner = A.hp > 0 ? A.name : B.name;
   log.push(`Winner: ${winner}!`);
   return { winner, log };
-}
-
-const ALL_ROOMS = ['darts', 'scratch', 'pachinko', 'sushi', 'gacha'];
-function allRoomsCleared(state) {
-  if (!state) return false;
-  return ALL_ROOMS.every((r) => state[r] && state[r].cleared);
 }
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.ico': 'image/x-icon' };
@@ -223,15 +204,12 @@ async function handleApi(req, res) {
   const method = req.method;
   const body = method === 'POST' ? await readBody(req) : {};
 
-  // Tells the client whether to show a password field on the login screen.
   if (url === '/api/config' && method === 'GET') {
     return sendJSON(res, 200, { passwordRequired: !!ROOM_PASSWORD });
   }
 
   if (url === '/api/register' && method === 'POST') {
-    if (ROOM_PASSWORD && String(body.password || '') !== ROOM_PASSWORD) {
-      return sendJSON(res, 403, { error: 'Wrong room password.' });
-    }
+    if (ROOM_PASSWORD && String(body.password || '') !== ROOM_PASSWORD) return sendJSON(res, 403, { error: 'Wrong room password.' });
     const username = String(body.username || '').trim().slice(0, 20);
     if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) return sendJSON(res, 400, { error: 'Username must be 3-20 letters, numbers, or underscores.' });
     if (db.players[username.toLowerCase()]) return sendJSON(res, 409, { error: 'That name is taken. Try logging in.' });
@@ -242,9 +220,7 @@ async function handleApi(req, res) {
   }
 
   if (url === '/api/login' && method === 'POST') {
-    if (ROOM_PASSWORD && String(body.password || '') !== ROOM_PASSWORD) {
-      return sendJSON(res, 403, { error: 'Wrong room password.' });
-    }
+    if (ROOM_PASSWORD && String(body.password || '') !== ROOM_PASSWORD) return sendJSON(res, 403, { error: 'Wrong room password.' });
     const p = db.players[String(body.username || '').trim().toLowerCase()];
     if (!p) return sendJSON(res, 404, { error: 'No such player. Register first.' });
     return sendJSON(res, 200, { username: p.username, token: p.token, state: p.state, guild: p.guild, prestige: p.prestige || 0, dailyStreak: p.dailyStreak || 0, lastClaim: p.lastClaim || 0 });
@@ -270,7 +246,10 @@ async function handleApi(req, res) {
   if (url === '/api/prestige' && method === 'POST') {
     const p = findPlayerByToken(body.token);
     if (!p) return sendJSON(res, 401, { error: 'Bad token.' });
-    if (!allRoomsCleared(body.state)) return sendJSON(res, 400, { error: 'Clear all five rooms first.' });
+    const s = body.state || {};
+    const dartsCleared = s.darts && s.darts.cleared;
+    const scratchCleared = s.scratch && s.scratch.cleared;
+    if (!dartsCleared || !scratchCleared) return sendJSON(res, 400, { error: 'Clear both rooms first.' });
     p.prestige = (p.prestige || 0) + 1;
     p.state = null;
     p.netWorth = 0;
@@ -362,6 +341,22 @@ async function handleApi(req, res) {
     saveDB();
     return sendJSON(res, 200, { ok: true });
   }
+  if (url === '/api/guild/donate' && method === 'POST') {
+    const me = findPlayerByToken(body.token);
+    if (!me) return sendJSON(res, 401, { error: 'Bad token.' });
+    if (!me.guild) return sendJSON(res, 400, { error: 'You are not in a guild.' });
+    const amount = Math.max(0, Math.floor(Number(body.amount) || 0));
+    if (amount < 1) return sendJSON(res, 400, { error: 'Amount must be at least $1.' });
+    const key = me.guild.toLowerCase();
+    const g = db.guilds[key];
+    if (!g) return sendJSON(res, 404, { error: 'Guild not found.' });
+    g.bonusTreasure = (g.bonusTreasure || 0) + amount;
+    const treasure = guildTreasure(g);
+    saveDB();
+    wsBroadcastToGuild(me.guild, { type: 'guild_update', treasure });
+    return sendJSON(res, 200, { ok: true, treasure });
+  }
+
   if (url === '/api/guilds' && method === 'GET') {
     const guilds = Object.keys(db.guilds).map((k) => {
       const g = db.guilds[k];
@@ -407,15 +402,9 @@ function encodeFrame(str) {
   const payload = Buffer.from(str, 'utf8');
   const len = payload.length;
   let header;
-  if (len < 126) {
-    header = Buffer.from([0x81, len]);
-  } else if (len < 65536) {
-    header = Buffer.alloc(4);
-    header[0] = 0x81; header[1] = 126; header.writeUInt16BE(len, 2);
-  } else {
-    header = Buffer.alloc(10);
-    header[0] = 0x81; header[1] = 127; header.writeBigUInt64BE(BigInt(len), 2);
-  }
+  if (len < 126) { header = Buffer.from([0x81, len]); }
+  else if (len < 65536) { header = Buffer.alloc(4); header[0] = 0x81; header[1] = 126; header.writeUInt16BE(len, 2); }
+  else { header = Buffer.alloc(10); header[0] = 0x81; header[1] = 127; header.writeBigUInt64BE(BigInt(len), 2); }
   return Buffer.concat([header, payload]);
 }
 
@@ -424,12 +413,7 @@ server.on('upgrade', (req, socket) => {
   const key = req.headers['sec-websocket-key'];
   if (!key) { socket.destroy(); return; }
   const accept = crypto.createHash('sha1').update(key + WS_GUID).digest('base64');
-  socket.write(
-    'HTTP/1.1 101 Switching Protocols\r\n' +
-    'Upgrade: websocket\r\n' +
-    'Connection: Upgrade\r\n' +
-    `Sec-WebSocket-Accept: ${accept}\r\n\r\n`
-  );
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' + `Sec-WebSocket-Accept: ${accept}\r\n\r\n`);
   socket.user = null;
   let buffer = Buffer.alloc(0);
 
@@ -447,11 +431,8 @@ server.on('upgrade', (req, socket) => {
       const mask = masked ? buffer.slice(offset, offset + 4) : null;
       const dataStart = offset + maskLen;
       const payload = Buffer.alloc(len);
-      for (let i = 0; i < len; i++) {
-        payload[i] = masked ? buffer[dataStart + i] ^ mask[i % 4] : buffer[dataStart + i];
-      }
+      for (let i = 0; i < len; i++) { payload[i] = masked ? buffer[dataStart + i] ^ mask[i % 4] : buffer[dataStart + i]; }
       buffer = buffer.slice(dataStart + len);
-
       if (opcode === 0x8) { socket.end(); return; }
       if (opcode === 0x9) { socket.write(Buffer.from([0x8a, 0x00])); continue; }
       if (opcode !== 0x1) continue;
@@ -471,7 +452,6 @@ server.on('upgrade', (req, socket) => {
 
 function handleWsMessage(socket, raw) {
   let m; try { m = JSON.parse(raw); } catch { return; }
-
   if (m.type === 'auth') {
     const p = findPlayerByToken(m.token);
     if (!p) { socket.write(encodeFrame(JSON.stringify({ type: 'error', error: 'bad token' }))); return; }
@@ -482,7 +462,6 @@ function handleWsMessage(socket, raw) {
     return;
   }
   if (!socket.user) return;
-
   if (m.type === 'guild_chat') {
     const p = db.players[socket.user.toLowerCase()];
     if (!p || !p.guild) return;
