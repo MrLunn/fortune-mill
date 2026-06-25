@@ -8,7 +8,7 @@
   const ROOM_GOAL = 1_000_000;
   const NEW_ROOMS = ['pachinko', 'sushi', 'gacha'];
   const ALL_ROOMS = ['darts', 'scratch', 'slots', 'pachinko', 'sushi', 'gacha'];
-  const ROOM_LABEL = { darts:'Dart', scratch:'Scratcher', slots:'Slot', pachinko:'Pachinko', sushi:'Sushi', gacha:'Gacha' };
+  const ROOM_LABEL = { darts:'Axe', scratch:'Rune', slots:'Reel', pachinko:'Boulder', sushi:'Feast', gacha:'Beast' };
 
   // ── State ──────────────────────────────────────────────────────────────────
   const state = {
@@ -104,10 +104,10 @@
   ];
 
   const GACHA_RARITIES = [
-    { name:'Common',    mult:1,   cls:''     },
-    { name:'Rare',      mult:6,   cls:'good' },
-    { name:'Epic',      mult:30,  cls:'good' },
-    { name:'Legendary', mult:150, cls:'gold' },
+    { name:'Wolf',   mult:1,   cls:''     },
+    { name:'Raven',  mult:6,   cls:'good' },
+    { name:'Bear',   mult:30,  cls:'good' },
+    { name:'Dragon', mult:150, cls:'gold' },
   ];
 
   // ── Daily challenges ───────────────────────────────────────────────────────
@@ -224,13 +224,13 @@
   function perSecond() {
     const fromDarts = dartAuto() * dartValue() * (1 + dartCrit() * 9);
     const t  = TICKETS[unlockedTiers()-1];
-    const ev = scratchAuto() * (t.maxWin * (0.25 + scratchLuck()) * 0.5 * jackpotMult() - t.cost);
+    const ev = scratchAuto() * (t.maxWin * (0.25 + scratchLuck()) * 0.5 * jackpotMult());
     const sb = SLOT_BETS[Math.max(0, unlockedBets()-1)];
-    const slotEv = slotAuto() * (sb.cost * (0.64 * slotMult() * (1 + slotLuck()) - 1));
+    const slotEv = slotAuto() * (sb.cost * 0.64 * slotMult() * (1 + slotLuck()));
     const pac = pachinkoAuto() * pachinkoValue() * (2 + pachinkoLuck()*25);
     const sus = sushiAuto()    * sushiValue()    * ((0.35 + sushiLuck())*2);
     const gac = gachaAuto()    * gachaValue()    * (1.5 + gachaLuck()*30);
-    return Math.max(0, fromDarts + Math.max(0,ev) + Math.max(0,slotEv) + pac + sus + gac);
+    return Math.max(0, fromDarts + ev + slotEv + pac + sus + gac);
   }
 
   function combat() {
@@ -275,7 +275,7 @@
       : `Best payout: ${money(best)} / ${money(ROOM_GOAL)} to clear`;
     if (!state[room]?.cleared && best >= ROOM_GOAL) {
       state[room].cleared = true;
-      toast(`🎉 ${ROOM_LABEL[room]||room} room CLEARED! Next room unlocked.`);
+      toast(`🎉 ${ROOM_LABEL[room]||room} trial CONQUERED! The next hall opens.`);
       updatePrestigeBtn();
       updateRoomLocks();
       if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
@@ -319,7 +319,7 @@
 
     if (typeof Dopamine !== 'undefined') { Dopamine.onThrow(); Dopamine.checkAchievements(); }
 
-    logTo('dartsLog', `🎯 ${crit?'CRIT! ':''}Hit ${money(payout)} (${Math.round(accuracy*100)}% acc)`, crit?'good':'');
+    logTo('dartsLog', `🪓 ${crit?'CLEAVE! ':''}Struck ${money(payout)} (${Math.round(accuracy*100)}% aim)`, crit?'good':'');
     if (typeof Anim !== 'undefined') { try { Anim.throwDart(accuracy, crit); } catch {} }
     AnimFloat('+'+money(payout), $('throwBtn'), crit?'#ffd166':'#00e87a');
     SFX('sfxDart', crit);
@@ -346,12 +346,12 @@
       state.scratchWins  = (state.scratchWins||0) + 1;
       if (jackpot) { state.jackpots = (state.jackpots||0)+1; updateChallengeProgress('jackpots',1); }
       updateChallengeProgress('scratchWins',1);
-      logTo('scratchLog', `🎟 ${jackpot?'💰 JACKPOT! ':''}${t.name} won ${money(win)}`, jackpot?'good':'');
+      logTo('scratchLog', `ᚱ ${jackpot?'⚡ DIVINE BLESSING! ':''}${t.name} rune blessed ${money(win)}`, jackpot?'good':'');
       if (typeof Anim !== 'undefined') { try { Anim.revealScratch(true, jackpot); } catch {} }
       AnimFloat('+'+money(win), $('scratchBtn'), jackpot?'#ffd166':'#00e87a');
       SFX('sfxWin', jackpot);
     } else {
-      logTo('scratchLog', `🎟 ${t.name} — no win. (-${money(t.cost)})`, 'muted');
+      logTo('scratchLog', `ᚱ ${t.name} rune fell silent. (-${money(t.cost)})`, 'muted');
       if (typeof Anim !== 'undefined') { try { Anim.revealScratch(false, false); } catch {} }
       SFX('sfxLoss');
     }
@@ -455,8 +455,8 @@
   }
 
   // ── Animation helpers for the newer rooms (self-contained CSS toggles) ───────
-  const SUSHI_EMOJI = ['🍣','🍤','🍱','🍙','🍥','🍘'];
-  const GACHA_PETS  = { Common:'🐭', Rare:'🐱', Epic:'🦊', Legendary:'🐉' };
+  const SUSHI_EMOJI = ['🍖','🍺','🐟','🍗','🧀','🥩'];
+  const GACHA_PETS  = { Wolf:'🐺', Raven:'🦅', Bear:'🐻', Dragon:'🐉' };
   function animPachinko(slot, jackpot) {
     const ball = $('pachinkoBall');
     if (ball) {
@@ -487,7 +487,7 @@
       cap.classList.remove('shaking');
       cap.textContent = GACHA_PETS[rarityName] || '🐾';
       cap.style.animation = 'gpop 0.45s ease';
-      cap.style.color = ({ Common:'var(--ink)', Rare:'var(--blue)', Epic:'var(--purple)', Legendary:'var(--gold)' })[rarityName] || 'var(--ink)';
+      cap.style.color = ({ Wolf:'var(--ink)', Raven:'var(--blue)', Bear:'var(--purple)', Dragon:'var(--gold)' })[rarityName] || 'var(--ink)';
     }, 360);
   }
 
@@ -502,7 +502,7 @@
     state.pachinko.best = Math.max(state.pachinko.best, payout);
     if (jackpot) updateChallengeProgress('jackpots', 1);
     addFocus(6);
-    logTo('pachinkoLog', `🪙 ${jackpot?'💥 25× JACKPOT SLOT! ':''}Ball landed ${slot}× → ${money(payout)}`, jackpot?'good':'');
+    logTo('pachinkoLog', `🪨 ${jackpot?'💥 25× RUNE STRIKE! ':''}Boulder hit ${slot}× → ${money(payout)}`, jackpot?'good':'');
     AnimFloat('+'+money(payout), $('dropBtn'), jackpot?'#ffc820':'#00e87a');
     SFX(jackpot ? 'sfxWin' : 'sfxDart', jackpot);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
@@ -521,11 +521,11 @@
       earn(payout);
       state.sushi.best = Math.max(state.sushi.best, payout);
       if (perfect) updateChallengeProgress('jackpots', 1);
-      logTo('sushiLog', `🍣 ${perfect?'🌟 PERFECT COMBO! ':'Match! '}${money(payout)}`, perfect?'good':'');
+      logTo('sushiLog', `🍖 ${perfect?'🌟 PERFECT FEAST! ':'Feast! '}${money(payout)}`, perfect?'good':'');
       AnimFloat('+'+money(payout), $('cookBtn'), perfect?'#ffc820':'#00e87a');
       SFX('sfxWin', perfect);
     } else {
-      logTo('sushiLog', `🍣 No match this time…`, 'muted');
+      logTo('sushiLog', `🍖 The hall goes hungry…`, 'muted');
       SFX('sfxLoss');
     }
     addFocus(6);
@@ -550,7 +550,7 @@
     state.gacha.best = Math.max(state.gacha.best, payout);
     if (rarity.mult >= 150) updateChallengeProgress('jackpots', 1);
     addFocus(6);
-    logTo('gachaLog', `🐾 Pulled a ${rarity.name} pet! +${money(payout)}`, rarity.cls);
+    logTo('gachaLog', `🐺 Summoned a ${rarity.name}! +${money(payout)}`, rarity.cls);
     AnimFloat('+'+money(payout), $('pullBtn'), rarity.mult>=30?'#ffc820':'#00e87a');
     SFX('sfxWin', rarity.mult>=30);
     if (typeof Dopamine !== 'undefined') Dopamine.checkAchievements();
@@ -854,14 +854,16 @@
     const s = scratchAuto();
     if (s > 0) {
       const t  = TICKETS[unlockedTiers()-1];
-      const ev = (t.maxWin * (0.25+scratchLuck()) * 0.5 * jackpotMult() - t.cost);
-      earn(Math.max(0, s*ev*dt));
+      const per = t.maxWin * (0.25+scratchLuck()) * 0.5 * jackpotMult();
+      earn(s * per * dt);
+      state.scratch.best = Math.max(state.scratch.best, per);
     }
     const sa = slotAuto();
     if (sa > 0) {
       const sb  = SLOT_BETS[Math.max(0, unlockedBets()-1)];
-      const slotEv = sb.cost * (0.64 * slotMult() * (1+slotLuck()) - 1);
-      earn(Math.max(0, sa * slotEv * dt));
+      const per = sb.cost * 0.64 * slotMult() * (1+slotLuck());
+      earn(sa * per * dt);
+      state.slots.best = Math.max(state.slots.best, per);
     }
     const pa = pachinkoAuto();
     if (pa > 0) { const per = pachinkoValue()*(2+pachinkoLuck()*25); earn(pa*per*dt); state.pachinko.best = Math.max(state.pachinko.best, per); }

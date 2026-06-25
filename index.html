@@ -6,16 +6,16 @@
 <title>Fortune Mill — Text Edition</title>
 <style>
 :root {
-  --bg:#05080e; --panel:#0b1320; --panel2:#08101a; --ink:#b8d0c4; --dim:#38554a;
-  --accent:#00e87a; --gold:#ffc820; --red:#ff3355; --blue:#33aaff; --purple:#bb55ff;
-  --border:#142030; --borderhi:#1e3448;
+  --bg:#0c0907; --panel:#1a1410; --panel2:#120d09; --ink:#ecd9b0; --dim:#8a6f44;
+  --accent:#46c0e8; --gold:#f0b429; --red:#d23b3b; --blue:#5aa0d8; --purple:#a877e0;
+  --border:#2a2014; --borderhi:#42321d;
 }
 * { box-sizing: border-box; }
 body {
   margin:0; background:var(--bg);
   background-image:
-    radial-gradient(ellipse at 15% 0%, rgba(0,232,122,0.05) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 0%, rgba(51,170,255,0.04) 0%, transparent 55%);
+    radial-gradient(ellipse at 15% 0%, rgba(240,180,41,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 0%, rgba(70,192,232,0.05) 0%, transparent 55%);
   color:var(--ink); font-family:"JetBrains Mono","Cascadia Code",Consolas,Menlo,monospace;
   font-size:14px; line-height:1.5; min-height:100vh;
 }
@@ -191,15 +191,15 @@ tr:hover td { background:rgba(255,255,255,0.01); }
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>⚙ FORTUNE MILL <span class="sub">// text edition</span></h1>
+    <h1>⚔ FORTUNE OF VALHALLA <span class="sub">// a viking saga</span></h1>
     <div class="who" id="who"></div>
   </header>
 
   <!-- LOGIN -->
   <div id="loginView" class="panel">
-    <h2>Enter the Mill</h2>
-    <p class="muted" style="font-size:12px;">Pick a name to start grinding. Each room wants $1,000,000 to clear.
-       Progress saves to the server so PvP duels and guilds work across players.</p>
+    <h2>Enter the Longhouse</h2>
+    <p class="muted" style="font-size:12px;">Choose your warrior name and earn your saga. Conquer each hall ($1,000,000) to open the next.
+       Your glory is saved to the server, so Holmgang duels and clans work across all warriors.</p>
     <div class="field">
       <label>Username — 3-20 letters, numbers, underscore</label>
       <input id="usernameInput" placeholder="e.g. millrat42" maxlength="20" />
@@ -219,28 +219,28 @@ tr:hover td { background:rgba(255,255,255,0.01); }
   <div id="app" class="hidden">
 
     <nav class="tabs">
-      <button data-tab="darts" class="active">🎯 Darts</button>
-      <button data-tab="scratch">🎟 Scratchers</button>
-      <button data-tab="slots">🎰 Slots</button>
-      <button data-tab="pachinko">🪙 Pachinko</button>
-      <button data-tab="sushi">🍣 Sushi</button>
-      <button data-tab="gacha">🐾 Gacha</button>
-      <button data-tab="challenges">⚡ Challenges</button>
-      <button data-tab="pvp">⚔ PvP</button>
-      <button data-tab="guild">🛡 Guild</button>
-      <button data-tab="board">🏆 Leaderboard</button>
+      <button data-tab="darts" class="active">🪓 Axes</button>
+      <button data-tab="scratch">ᚱ Runes</button>
+      <button data-tab="slots">🎰 Norn Reels</button>
+      <button data-tab="pachinko">🪨 Boulder</button>
+      <button data-tab="sushi">🍖 Feast</button>
+      <button data-tab="gacha">🐺 Beasts</button>
+      <button data-tab="challenges">📜 Quests</button>
+      <button data-tab="pvp">⚔ Holmgang</button>
+      <button data-tab="guild">🛡 Clan</button>
+      <button data-tab="board">🏆 Saga</button>
     </nav>
 
     <div class="stat-bar">
       <div class="stat-item"><span class="slabel">Net Worth</span><span class="sval g" id="netWorth">$0</span></div>
       <div class="stat-item"><span class="slabel">Lifetime</span><span class="sval" id="lifetime">$0</span></div>
       <div class="stat-item"><span class="slabel">Per Second</span><span class="sval a" id="perSec">$0/s</span></div>
-      <div class="stat-item"><span class="slabel">Duel Power</span><span class="sval r" id="power">0</span></div>
-      <div class="stat-item"><span class="slabel">✨ Prestige</span><span class="sval p" id="prestigeCount">0</span><span class="slabel" style="color:var(--gold);"><span id="prestigeMult">100</span>% bonus</span></div>
+      <div class="stat-item"><span class="slabel">Battle Might</span><span class="sval r" id="power">0</span></div>
+      <div class="stat-item"><span class="slabel">⚡ Ascension</span><span class="sval p" id="prestigeCount">0</span><span class="slabel" style="color:var(--gold);"><span id="prestigeMult">100</span>% bonus</span></div>
       <div class="stat-item"><span class="slabel">📅 Streak</span><span class="sval b" id="dailyStreak">0</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:auto;">
-        <button class="act" id="dailyBtn">🎁 Daily</button>
-        <button class="act" id="prestigeBtn" disabled>✨ Prestige</button>
+        <button class="act" id="dailyBtn">🎁 Tribute</button>
+        <button class="act" id="prestigeBtn" disabled>⚡ Ascend</button>
         <button class="act" id="spinBtn">🎡 Wheel</button>
         <button class="act" id="muteBtn">🔊</button>
       </div>
@@ -255,8 +255,8 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="darts">
       <div class="row">
         <div class="col panel" id="dartRoomPanel">
-          <h2>🎯 Dart Room</h2>
-          <p class="muted" style="font-size:12px;">Aim for the bull. Crits hit 10× harder. Keep your streak hot for combo bonuses.</p>
+          <h2>🪓 Axe-Throwing Pit</h2>
+          <p class="muted" style="font-size:12px;">Hurl your axe at the target. Cleaves strike 10× harder. Keep your streak hot for combo fury.</p>
           <div class="progress"><div id="dartsGoal"></div></div>
           <p class="muted" style="font-size:11px;" id="dartsGoalText"></p>
           <div id="luckyBar" class="hidden"><span id="luckyBarText">🍀 LUCKY HOUR — ×2 all earnings</span></div>
@@ -266,7 +266,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
             <div class="focus-track"><div class="focus-fill" id="focusFill"></div></div>
           </div>
           <div id="dartboardSlot" style="text-align:center;margin:6px 0;"></div>
-          <button class="big act" id="throwBtn">THROW DART (space)</button>
+          <button class="big act" id="throwBtn">HURL AXE (space)</button>
           <div class="stat"><span class="k">Base value</span><span class="v gold" id="dartValue">$1</span></div>
           <div class="stat"><span class="k">Auto-throwers</span><span class="v" id="dartAuto">0/s</span></div>
           <div class="stat"><span class="k">Crit chance</span><span class="v good" id="dartCrit">0%</span></div>
@@ -284,13 +284,13 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="scratch" class="hidden">
       <div class="row">
         <div class="col panel" id="scratchRoomPanel">
-          <h2>🎟 Scratcher Room</h2>
-          <p class="muted" style="font-size:12px;">Buy a ticket, scratch it. Jackpots are rare — but massive.</p>
-          <div class="lock-note" id="scratchLock" style="display:none;">🔒 Clear the Dart room (reach a $1,000,000 payout) to unlock Scratchers.</div>
+          <h2>ᚱ Rune Carving</h2>
+          <p class="muted" style="font-size:12px;">Carve a rune stone and pray to the gods. Divine blessings are rare — but mighty.</p>
+          <div class="lock-note" id="scratchLock" style="display:none;">🔒 Conquer the Axe Pit (land a $1,000,000 strike) to unlock Rune Carving.</div>
           <div class="progress"><div id="scratchGoal"></div></div>
           <p class="muted" style="font-size:11px;" id="scratchGoalText"></p>
           <div class="field"><label>Ticket tier</label><select id="ticketTier"></select></div>
-          <button class="big act" id="scratchBtn">BUY &amp; SCRATCH</button>
+          <button class="big act" id="scratchBtn">CARVE A RUNE</button>
           <div class="stat"><span class="k">Win chance</span><span class="v good" id="scratchLuck">25%</span></div>
           <div class="stat"><span class="k">Auto-scratchers</span><span class="v" id="scratchAuto">0/s</span></div>
           <div class="log" id="scratchLog"></div>
@@ -307,9 +307,9 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="slots" class="hidden">
       <div class="row">
         <div class="col panel">
-          <h2>🎰 Slot Machine</h2>
-          <p class="muted" style="font-size:12px;">Match symbols for payouts. 💎💎💎 is the jackpot.</p>
-          <div class="lock-note" id="slotsLock" style="display:none;">🔒 Clear the Scratcher room to unlock Slots.</div>
+          <h2>🎰 Norn's Reels</h2>
+          <p class="muted" style="font-size:12px;">Spin the reels of fate. Match three for a payout — 💎💎💎 is the gods' jackpot.</p>
+          <div class="lock-note" id="slotsLock" style="display:none;">🔒 Conquer Rune Carving to unlock the Norn's Reels.</div>
           <div class="progress"><div id="slotsGoal"></div></div>
           <p class="muted" style="font-size:11px;" id="slotsGoalText"></p>
           <div class="reels">
@@ -318,7 +318,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
             <div class="reel"><div class="reel-inner" id="reel2">🍇</div><div class="reel-shine"></div></div>
           </div>
           <div class="field"><label>Bet size</label><select id="slotBet"></select></div>
-          <button class="big act" id="slotBtn">🎰 PULL LEVER</button>
+          <button class="big act" id="slotBtn">🎰 SPIN THE NORNS</button>
           <div class="stat"><span class="k">Auto-spin</span><span class="v" id="slotAutoDisplay">Off</span></div>
           <div class="stat"><span class="k">Wins</span><span class="v good" id="slotWins">0</span></div>
           <div class="stat"><span class="k">Jackpots</span><span class="v gold" id="slotJackpots">0</span></div>
@@ -339,13 +339,13 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="pachinko" class="hidden">
       <div class="row">
         <div class="col panel">
-          <h2>🪙 Pachinko Room</h2>
-          <p class="muted" style="font-size:12px;">Drop a ball into a multiplier slot. Jackpot Pins unlock the 25× slot.</p>
-          <div class="lock-note" id="pachinkoLock" style="display:none;">🔒 Clear the Slot room to unlock Pachinko.</div>
+          <h2>🪨 Boulder Drop</h2>
+          <p class="muted" style="font-size:12px;">Drop a boulder down the cliff into a multiplier rune. Jackpot Pins unlock the 25× rune.</p>
+          <div class="lock-note" id="pachinkoLock" style="display:none;">🔒 Conquer the Norn's Reels to unlock the Boulder Drop.</div>
           <div class="progress"><div id="pachinkoGoal"></div></div>
           <p class="muted" style="font-size:11px;" id="pachinkoGoalText"></p>
-          <div class="anim-stage pachinko-stage"><div class="pball" id="pachinkoBall">🪙</div><div class="pachinko-result" id="pachinkoResult"></div></div>
-          <button class="big act" id="dropBtn">DROP BALL (space)</button>
+          <div class="anim-stage pachinko-stage"><div class="pball" id="pachinkoBall">🪨</div><div class="pachinko-result" id="pachinkoResult"></div></div>
+          <button class="big act" id="dropBtn">DROP BOULDER (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="pachinkoValue">$1</span></div>
           <div class="stat"><span class="k">Auto-droppers</span><span class="v" id="pachinkoAuto">0/s</span></div>
           <div class="log" id="pachinkoLog"></div>
@@ -361,13 +361,13 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="sushi" class="hidden">
       <div class="row">
         <div class="col panel">
-          <h2>🍣 Sushi Match Room</h2>
-          <p class="muted" style="font-size:12px;">Cook plates and match pairs. Perfect combos pay 15×.</p>
-          <div class="lock-note" id="sushiLock" style="display:none;">🔒 Clear the Pachinko room to unlock Sushi.</div>
+          <h2>🍖 Feast Hall</h2>
+          <p class="muted" style="font-size:12px;">Serve the longhouse. Match the dishes for a roaring feast — a perfect spread pays 15×.</p>
+          <div class="lock-note" id="sushiLock" style="display:none;">🔒 Conquer the Boulder Drop to unlock the Feast Hall.</div>
           <div class="progress"><div id="sushiGoal"></div></div>
           <p class="muted" style="font-size:11px;" id="sushiGoalText"></p>
-          <div class="anim-stage sushi-stage" id="sushiStage"><span class="splate" id="sushiP0">🍣</span><span class="splate" id="sushiP1">🍤</span><span class="splate" id="sushiP2">🍙</span></div>
-          <button class="big act" id="cookBtn">COOK SUSHI (space)</button>
+          <div class="anim-stage sushi-stage" id="sushiStage"><span class="splate" id="sushiP0">🍖</span><span class="splate" id="sushiP1">🍺</span><span class="splate" id="sushiP2">🐟</span></div>
+          <button class="big act" id="cookBtn">SERVE FEAST (space)</button>
           <div class="stat"><span class="k">Base payout</span><span class="v gold" id="sushiValue">$1</span></div>
           <div class="stat"><span class="k">Auto-cooks</span><span class="v" id="sushiAuto">0/s</span></div>
           <div class="log" id="sushiLog"></div>
@@ -383,13 +383,13 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="gacha" class="hidden">
       <div class="row">
         <div class="col panel">
-          <h2>🐾 Gacha Pet Room</h2>
-          <p class="muted" style="font-size:12px;">Pull for pets: Common → Rare → Epic → Legendary (150×).</p>
-          <div class="lock-note" id="gachaLock" style="display:none;">🔒 Clear the Sushi room to unlock Gacha.</div>
+          <h2>🐺 Beast Summon</h2>
+          <p class="muted" style="font-size:12px;">Summon beasts of legend: Wolf → Raven → Bear → Dragon (150×).</p>
+          <div class="lock-note" id="gachaLock" style="display:none;">🔒 Conquer the Feast Hall to unlock Beast Summon.</div>
           <div class="progress"><div id="gachaGoal"></div></div>
           <p class="muted" style="font-size:11px;" id="gachaGoalText"></p>
           <div class="anim-stage gacha-stage"><div class="gachaCapsule" id="gachaCapsule">🥚</div></div>
-          <button class="big act" id="pullBtn">PULL PET (space)</button>
+          <button class="big act" id="pullBtn">SUMMON BEAST (space)</button>
           <div class="stat"><span class="k">Base pull value</span><span class="v gold" id="gachaValue">$1</span></div>
           <div class="stat"><span class="k">Auto-pullers</span><span class="v" id="gachaAuto">0/s</span></div>
           <div class="log" id="gachaLog"></div>
@@ -404,13 +404,13 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <!-- CHALLENGES -->
     <section data-view="challenges" class="hidden">
       <div class="panel">
-        <h2>⚡ Daily Challenges</h2>
+        <h2>📜 Daily Quests</h2>
         <p class="muted" style="font-size:12px;">Three challenges refresh every day. Rewards scale with your prestige level.</p>
         <div id="challengeList"></div>
         <p class="muted" style="font-size:11px;margin-top:6px;" id="challengeTimer"></p>
       </div>
       <div class="panel">
-        <h2>📋 Achievements</h2>
+        <h2>📋 Deeds</h2>
         <div id="achList"></div>
       </div>
     </section>
@@ -419,7 +419,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="pvp" class="hidden">
       <div class="row">
         <div class="col panel">
-          <h2>⚔ Duel Arena</h2>
+          <h2>⚔ Holmgang Arena</h2>
           <p class="muted" style="font-size:12px;">ATK from dart/pachinko/sushi value, crit from luck, HP from net worth.</p>
           <div class="stat"><span class="k">Your ATK</span><span class="v" id="myAtk">1</span></div>
           <div class="stat"><span class="k">Your Luck (crit%)</span><span class="v" id="myLuck">0</span></div>
@@ -440,13 +440,13 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <section data-view="guild" class="hidden">
       <div id="noGuild" class="row">
         <div class="col panel">
-          <h2>🛡 Create a Guild</h2>
+          <h2>🛡 Found a Clan</h2>
           <div class="field"><label>Guild name</label><input id="guildNameInput" maxlength="24" placeholder="The Mill Rats" /></div>
-          <button class="act" id="createGuildBtn">Found Guild</button>
+          <button class="act" id="createGuildBtn">Found Clan</button>
           <p id="guildMsg" class="bad"></p>
         </div>
         <div class="col panel">
-          <h2>Join a Guild</h2>
+          <h2>Join a Clan</h2>
           <button class="act" id="refreshGuilds">↻ Refresh list</button>
           <table style="margin-top:8px;"><thead><tr><th>Guild</th><th>Members</th><th>Treasure</th><th></th></tr></thead>
             <tbody id="guildList"></tbody></table>
@@ -485,7 +485,7 @@ tr:hover td { background:rgba(255,255,255,0.01); }
     <!-- LEADERBOARD -->
     <section data-view="board" class="hidden">
       <div class="panel">
-        <h2>🏆 Richest Players</h2>
+        <h2>🏆 Saga of Jarls</h2>
         <button class="act" id="refreshBoard">↻ Refresh</button>
         <table style="margin-top:10px;">
           <thead><tr><th>#</th><th>Player</th><th>Lifetime</th><th>Net Worth</th><th>Guild</th><th>Record</th><th>Prestige</th></tr></thead>
